@@ -1,0 +1,977 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Chat Burbuja Posicionable</title>
+  <style>
+    :root {
+      --primary-color: #7b3fe4;
+      --bg-color: #fff;
+      --text-color: #000;
+      --text-left-bubble: #fff;
+      --bg-right-bubble: #e5e5ea;
+      --text-right-bubble: #000;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: Arial, sans-serif; background: #f0f2f5; color: var(--text-color); }
+
+    #chat-launcher {
+        position: fixed;
+        z-index: 9999;
+    }
+
+    #chat-button {
+        background-color: var(--primary-color);
+        color: var(--bg-color);
+        font-size: 24px;
+        border-radius: 50%;
+        width: 50px;
+        height: 50px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: transform 0.2s;
+    }
+
+    #chat-button:hover {
+        transform: scale(1.1);
+    }
+
+    #chat-tooltip {
+        position: absolute;
+        background: var(--bg-color);
+        border-radius: 10px;
+        padding: 10px;
+        box-shadow: 0 5px 10px rgba(0,0,0,0.1);
+        border: 2px solid var(--primary-color);
+        width: 300px;
+        cursor: pointer;
+        z-index: 9998;
+    }
+
+    .tooltip-content {
+        position: relative;
+        font-family: sans-serif;
+        font-size: 14px;
+        color: var(--text-color);
+    }
+
+    .close-tooltip {
+      position: absolute;
+      top: 0;
+      right: 5px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+
+    .hidden {
+        display: none;
+    }
+
+    .chat-toggle-btn {
+      position: fixed;
+      background: var(--primary-color);
+      color: var(--text-left-bubble);
+      border: none;
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      font-size: 28px;
+      cursor: pointer;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.2s;
+    }
+
+    .chat-toggle-btn:hover {
+      transform: scale(1.1);
+    }
+
+    .chat-wrapper {
+      position: fixed;
+      width: 100%;
+      max-width: 360px;
+      height: 500px;
+      background: var(--bg-color);
+      border-radius: 15px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+      display: none;
+      flex-direction: column;
+      overflow: hidden;
+      z-index: 999;
+    }
+
+    .chat-header {
+      display: flex;
+      flex-direction: column;
+      background: var(--primary-color);
+      color: var(--text-left-bubble);
+    }
+
+    .chat-header-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px;
+    }
+
+    .chat-header-top img {
+      height: 30px;
+      margin-right: 8px;
+    }
+
+    .chat-header-title {
+      display: flex;
+      align-items: center;
+      font-weight: bold;
+      font-size: 1rem;
+    }
+
+    .chat-header button {
+      background: transparent;
+      border: none;
+      color: var(--text-left-bubble);
+      font-size: 20px;
+      cursor: pointer;
+    }
+
+    .chat-status {
+      font-size: 0.85rem;
+      padding: 0 12px 10px;
+      color: #d4eaff;
+    }
+
+    .chat-messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 15px;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    .chat-bubble {
+      max-width: 80%;
+      padding: 10px 14px;
+      margin: 6px 0;
+      border-radius: 18px;
+      word-wrap: break-word;
+      font-size: 0.95rem;
+    }
+
+    .chat-bubble img {
+      max-width: 100%;
+      border-radius: 10px;
+      margin-top: 5px;
+    }
+
+    .left { align-self: flex-start; background-color: var(--primary-color); color: var(--text-left-bubble); }
+    .right { align-self: flex-end; background-color: var(--bg-right-bubble); color: var(--text-right-bubble); }
+
+    .chat-footer {
+      display: flex;
+      gap: 6px;
+      padding: 10px;
+      border-top: 1px solid #ddd;
+      align-items: center;
+    }
+
+    .chat-footer input[type="file"] { display: none; }
+
+    .chat-footer .btn {
+      color: var(--text-color);
+      border: none;
+      padding: 5px;
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: none; 
+    }
+
+    .chat-footer .btn.attach {
+      cursor: pointer;
+      outline: none;
+      border: none;
+      background: none;
+      transition: opacity 0.2s ease;
+    }
+
+    .chat-footer .attach:hover {
+      opacity: 0.6;
+    }
+    .chat-footer .btn:hover{
+      opacity: 0.6;
+    }
+
+    .chat-footer input[type="text"] {
+      flex: 1;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+    }
+
+    .scroll-bottom-btn {
+      position: absolute;
+      bottom: 65px;
+      right: 10px;
+      background: var(--primary-color);
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 30px;
+      height: 30px;
+      font-size: 16px;
+      display: none;
+      justify-content: center;
+      align-items: center;
+      cursor: pointer;
+      z-index: 10;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    }
+
+    .typing-dots span {
+      display: inline-block;
+      width: 6px;
+      height: 6px;
+      background-color: #d4eaff;
+      border-radius: 50%;
+      margin: 0 2px;
+      animation: blink 1.4s infinite both;
+    }
+
+    .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+    .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+    @keyframes blink {
+      0%, 80%, 100% { opacity: 0; }
+      40% { opacity: 1; }
+    }
+
+    /* Panel de control */
+    .control-panel {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: var(--bg-color);
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 2px 20px rgba(0,0,0,0.2);
+      z-index: 10000;
+      width: 90%;
+      max-width: 400px;
+    }
+
+    .control-panel h3 {
+      margin: 0 0 15px 0;
+      color: #333;
+      text-align: center;
+    }
+
+    .position-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+
+    .position-btn {
+      padding: 8px 12px;
+      border: 2px solid var(--primary-color);
+      background: white;
+      color: var(--primary-color);
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 12px;
+      text-align: center;
+      transition: all 0.3s;
+    }
+
+    .position-btn:hover {
+      background: var(--primary-color);
+      color: white;
+    }
+
+    .position-btn.active {
+      background: var(--primary-color);
+      color: white;
+    }
+
+    .theme-selector {
+      margin-bottom: 15px;
+    }
+
+    .theme-selector select {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      background: var(--bg-color);
+      color: var(--text-color);
+    }
+
+    .advanced-toggle {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin: 10px 0;
+      cursor: pointer;
+    }
+
+    .advanced-toggle span {
+      font-weight: bold;
+      color: var(--primary-color);
+    }
+
+    .advanced-toggle .arrow {
+      transition: transform 0.3s;
+    }
+
+    .advanced-toggle .arrow.down {
+      transform: rotate(90deg);
+    }
+
+    .color-controls, .position-controls {
+      margin-top: 20px;
+      padding-top: 15px;
+      border-top: 1px solid #eee;
+      overflow: hidden;
+      transition: max-height 0.3s ease;
+    }
+
+    .color-input, .position-input {
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+    }
+
+    .color-input label, .position-input label {
+      width: 120px;
+      font-size: 14px;
+    }
+
+    .color-input input[type="color"] {
+      width: 50px;
+      height: 30px;
+      padding: 2px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+
+    .position-input input[type="number"] {
+      width: 70px;
+      padding: 8px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+    #messageInput{
+      border: none;
+      outline: none;
+      background: var(--bg-color);
+      color: var(--text-color);
+    }
+    #messageInput::placeholder {
+      color: var(--text-color);
+      opacity: 0.5;
+    }
+    #messageInput:focus{
+      border: none;
+      outline: none;
+    }
+    #applyPosition {
+      background: var(--primary-color);
+      color: white;
+      border: none;
+      padding: 8px 15px;
+      border-radius: 5px;
+      cursor: pointer;
+      width: 100%;
+      margin-top: 5px;
+    }
+
+    @media (max-width: 500px) {
+      .control-panel {
+        width: 95%;
+        padding: 15px;
+      }
+      
+      .position-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      
+      .chat-wrapper {
+        max-width: 100%;
+        height: 100%;
+        border-radius: 0;
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        transform: none !important;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Panel de Control -->
+  <div class="control-panel">
+    <h3>Configuración del Chat</h3>
+    
+    <div class="theme-selector">
+      <label for="themeSelect">Seleccionar tema:</label>
+      <select id="themeSelect">
+        <option value="default">Predeterminado</option>
+        <option value="dark">Oscuro</option>
+        <option value="light">Claro</option>
+        <option value="purple">Morado</option>
+        <option value="blue">Azul</option>
+        <option value="custom">Personalizado...</option>
+      </select>
+    </div>
+    
+    <div class="advanced-toggle" id="advancedToggle">
+      <span>Configuración avanzada</span>
+      <span class="arrow">➡️</span>
+    </div>
+    
+    <div class="position-grid">
+      <button class="position-btn" data-position="left-top">↖️ Izq-Arriba</button>
+      <button class="position-btn" data-position="center-top">⬆️ Centro-Arriba</button>
+      <button class="position-btn" data-position="right-top">↗️ Der-Arriba</button>
+      <button class="position-btn" data-position="left-bottom">↙️ Izq-Abajo</button>
+      <button class="position-btn active" data-position="center-bottom">⬇️ Centro-Abajo</button>
+      <button class="position-btn" data-position="right-bottom">↘️ Der-Abajo</button>
+    </div>
+
+    <div class="advanced-settings hidden" id="advancedSettings" style="max-height: 0;">
+      <div class="color-controls">
+        <h4>Personalización de colores</h4>
+        <div class="color-input">
+          <label for="primaryColor">Color principal:</label>
+          <input type="color" id="primaryColor" value="#7b3fe4">
+        </div>
+        <div class="color-input">
+          <label for="bgColor">Color de fondo:</label>
+          <input type="color" id="bgColor" value="#ffffff">
+        </div>
+        <div class="color-input">
+          <label for="textColor">Color de texto:</label>
+          <input type="color" id="textColor" value="#000000">
+        </div>
+        <div class="color-input">
+          <label for="textColorLeftBubble">Color de izquierda texto:</label>
+          <input type="color" id="textColorLeftBubble" value="#ffffff">
+        </div>
+        <div class="color-input">
+          <label for="textColorRightBubble">Color de derecha texto:</label>
+          <input type="color" id="textColorRightBubble" value="#000">
+        </div>
+        <div class="color-input">
+          <label for="bgBubbleRight">Color de fondo texto derecha:</label>
+          <input type="color" id="bgBubbleRight" value="#e5e5ea">
+        </div>
+      </div>
+
+      <div class="position-controls">
+        <h4>Ajuste fino de posición</h4>
+        <div class="position-input">
+          <label for="posX">Posición X (px):</label>
+          <input type="number" id="posX" value="0">
+        </div>
+        <div class="position-input">
+          <label for="posY">Posición Y (px):</label>
+          <input type="number" id="posY" value="0">
+        </div>
+        <button id="applyPosition">Aplicar posición</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="chat-launcher">
+    <div id="chat-button">
+        <button class="chat-toggle-btn" id="chatToggleBtn">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 14l-3 -3h-7a1 1 0 0 1 -1 -1v-6a1 1 0 0 1 1 -1h9a1 1 0 0 1 1 1v10" />
+              <path d="M14 15v2a1 1 0 0 1 -1 1h-7l-3 3v-10a1 1 0 0 1 1 -1h2" />
+          </svg>
+        </button>
+    </div>
+    <div id="chat-tooltip" class="hidden">
+      <div class="tooltip-content">
+        <strong>Sofia</strong><br>
+        Hola, en que te podemos ayudar?
+        <span class="close-tooltip" onclick="closeTooltip()">×</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="chat-wrapper" id="chatWrapper">
+    <div class="chat-header">
+      <div class="chat-header-top">
+        <div class="chat-header-title">
+          <img src="https://tomatina.cloud/assets/images/iconoTomatina.png" alt="Logo" />
+          Soporte
+        </div>
+        <button class="btn-close" id="closeChat">
+            <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            >
+            <path d="M18 6l-12 12" />
+            <path d="M6 6l12 12" />
+            </svg>
+        </button>
+      </div>
+      <hr style="color: currentColor; width: 100%;">
+      <div class="chat-status" id="chatStatus">En línea</div>
+    </div>
+
+    <div class="chat-messages" id="chatMessages">
+      <div class="chat-bubble left">¡Hola! ¿En qué podemos ayudarte?</div>
+    </div>
+
+    <button class="scroll-bottom-btn" id="scrollBtn">
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 5l0 14" />
+        <path d="M16 15l-4 4" />
+        <path d="M8 15l4 4" />
+      </svg>
+    </button>
+
+    <div class="chat-footer">
+      <input type="text" id="messageInput" placeholder="Escribe un mensaje..." />
+       <label class="btn attach" for="fileInput">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M15 7l-6.5 6.5a1.5 1.5 0 0 0 3 3l6.5 -6.5a3 3 0 0 0 -6 -6l-6.5 6.5a4.5 4.5 0 0 0 9 9l6.5 -6.5" />
+        </svg>
+      </label>
+      <input type="file" id="fileInput" accept="image/*" />
+      <button class="btn" onclick="sendMessage()">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M10 14l11 -11" />
+          <path d="M21 3l-6.5 18a.55 .55 0 0 1 -1 0l-3.5 -7l-7 -3.5a.55 .55 0 0 1 0 -1l18 -6.5" />
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <script>
+    const chatToggleBtn = document.getElementById("chat-launcher");
+    const chatWrapper = document.getElementById("chatWrapper");
+    const closeChatBtn = document.getElementById("closeChat");
+    const chatMessages = document.getElementById("chatMessages");
+    const messageInput = document.getElementById("messageInput");
+    const scrollBtn = document.getElementById("scrollBtn");
+    const fileInput = document.getElementById("fileInput");
+    const chatStatus = document.getElementById("chatStatus");
+    const chatTooltip = document.getElementById("chat-tooltip");
+    const controlPanel = document.querySelector('.control-panel');
+    const primaryColorInput = document.getElementById('primaryColor');
+    const bgColorInput = document.getElementById('bgColor');
+    const textColorLeftBubble = document.getElementById('textColorLeftBubble');
+    const textColorRightBubble = document.getElementById('textColorRightBubble');
+    const bgBubbleRight = document.getElementById('bgBubbleRight');
+    const textColorInput = document.getElementById('textColor');
+    const posXInput = document.getElementById('posX');
+    const posYInput = document.getElementById('posY');
+    const applyPositionBtn = document.getElementById('applyPosition');
+    const themeSelect = document.getElementById('themeSelect');
+    const advancedToggle = document.getElementById('advancedToggle');
+    const advancedSettings = document.getElementById('advancedSettings');
+    const arrow = advancedToggle.querySelector('.arrow');
+
+    let typingTimeout;
+    let chatOpened = false;
+    let currentPosition = 'center-bottom';
+    let advancedSettingsVisible = false;
+
+    // Temas predefinidos
+    const themes = {
+      'default': {
+        '--primary-color': '#7b3fe4',
+        '--bg-color': '#ffffff',
+        '--text-color': '#000000',
+        '--text-left-bubble': '#ffffff',
+        '--text-right-bubble': '#000000',
+        '--bg-right-bubble': '#e5e5ea'
+      },
+      'dark': {
+        '--primary-color': '#2d3748',
+        '--bg-color': '#1a202c',
+        '--text-color': '#e2e8f0',
+        '--text-left-bubble': '#ffffff',
+        '--text-right-bubble': '#ffffff',
+        '--bg-right-bubble': '#4a5568'
+      },
+      'light': {
+        '--primary-color': '#4299e1',
+        '--bg-color': '#ffffff',
+        '--text-color': '#2d3748',
+        '--text-left-bubble': '#ffffff',
+        '--text-right-bubble': '#000000',
+        '--bg-right-bubble': '#edf2f7'
+      },
+      'purple': {
+        '--primary-color': '#6b46c1',
+        '--bg-color': '#faf5ff',
+        '--text-color': '#2d3748',
+        '--text-left-bubble': '#ffffff',
+        '--text-right-bubble': '#000000',
+        '--bg-right-bubble': '#e9d8fd'
+      },
+      'blue': {
+        '--primary-color': '#3182ce',
+        '--bg-color': '#ebf8ff',
+        '--text-color': '#2d3748',
+        '--text-left-bubble': '#ffffff',
+        '--text-right-bubble': '#000000',
+        '--bg-right-bubble': '#bee3f8'
+      }
+    };
+
+    const chatPositions = {
+        'right-top': { 
+            button: { top: '20px', right: '20px', left: 'auto', bottom: 'auto' },
+            window: { top: '20px', right: '20px', left: 'auto', bottom: 'auto' },
+            transform: null,
+            tooltip: {
+                position: { top:'-5px', right: '60px', bottom:'auto', left:'auto'},
+            }
+        },
+        'center-top': { 
+            button: { top: '20px', left: '50%', right: 'auto', bottom: 'auto' },
+            window: { top: '20px', left: '50%', right: 'auto', bottom: 'auto' },
+            transform: 'translateX(-50%)',
+            tooltip: {
+                position: { top:'-5px', right: 'auto', bottom:'auto', left:'210px' },
+                transform: 'translateX(-50%)',
+            }
+        },
+        'left-top': { 
+            button: { top: '20px', left: '20px', right: 'auto', bottom: 'auto' },
+            window: { top: '20px', left: '20px', right: 'auto', bottom: 'auto' },
+            transform: null,
+            tooltip: {
+                position: { top:'-5px', right: '60px', bottom:'auto', left:'60px' },
+            }
+        },
+        'right-bottom': { 
+            button: { bottom: '20px', right: '20px', left: 'auto', top: 'auto' },
+            window: { bottom: '20px', right: '20px', left: 'auto', top: 'auto' },
+            transform: null,
+            tooltip: {
+                position: { top:'auto',right: '60px', bottom:'-4px', left:'auto'},
+            }
+        },
+        'center-bottom': { 
+            button: { bottom: '20px', left: '50%', right: 'auto', top: 'auto' },
+            window: { bottom: '20px', left: '50%', right: 'auto', top: 'auto' },
+            transform: 'translateX(-50%)',
+            tooltip: {
+                position: { top: 'auto', right: 'auto', bottom: '-4px', left: '1px' },
+                transform: 'translateX(20%)',
+            }
+        },
+        'left-bottom': { 
+            button: { bottom: '20px', left: '20px', right: 'auto', top: 'auto' },
+            window: { bottom: '20px', left: '20px', right: 'auto', top: 'auto' },
+            transform: null,
+            tooltip: {
+                position: { top:'auto', right: '60px', bottom:'-4px',left: '60px'},
+            }
+        }
+    };
+
+    function positionElements(position) {
+        const chatConfig = chatPositions[position];
+        
+        if (!chatConfig) return;
+
+        // Resetear inputs de posición
+        posXInput.value = 0;
+        posYInput.value = 0;
+        
+        // Posicionar botón
+        Object.assign(chatToggleBtn.style, chatConfig.button);
+        chatToggleBtn.style.transform = chatConfig.transform || '';
+
+        // Posicionar ventana de chat
+        Object.assign(chatWrapper.style, chatConfig.window);
+        chatWrapper.style.transform = chatConfig.transform || '';
+
+        // Posicionar tooltip
+        const tooltipConfig = chatConfig.tooltip;
+        Object.assign(chatTooltip.style, tooltipConfig.position);
+        chatTooltip.style.transform = tooltipConfig.transform || '';
+
+        adjustTooltipPosition();
+    }
+
+    function adjustTooltipPosition() {
+        const tooltipRect = chatTooltip.getBoundingClientRect();
+        const viewportWidth = window.innerWidth;
+        const viewportHeight = window.innerHeight;
+    }
+
+    // Función para actualizar colores
+    function updateColors() {
+      document.documentElement.style.setProperty('--primary-color', primaryColorInput.value);
+      document.documentElement.style.setProperty('--bg-color', bgColorInput.value);
+      document.documentElement.style.setProperty('--text-color', textColorInput.value);
+      document.documentElement.style.setProperty('--text-left-bubble', textColorLeftBubble.value);
+      document.documentElement.style.setProperty('--text-right-bubble', textColorRightBubble.value);
+      document.documentElement.style.setProperty('--bg-right-bubble', bgBubbleRight.value);
+    }
+
+    // Función para aplicar un tema
+    function applyTheme(themeName) {
+      if (themeName === 'custom') {
+        toggleAdvancedSettings(true);
+        return;
+      }
+      
+      const theme = themes[themeName];
+      if (!theme) return;
+      
+      // Aplicar colores del tema
+      for (const [property, value] of Object.entries(theme)) {
+        document.documentElement.style.setProperty(property, value);
+      }
+      
+      // Actualizar los inputs de color
+      primaryColorInput.value = theme['--primary-color'];
+      bgColorInput.value = theme['--bg-color'];
+      textColorInput.value = theme['--text-color'];
+      textColorLeftBubble.value = theme['--text-left-bubble'];
+      textColorRightBubble.value = theme['--text-right-bubble'];
+      bgBubbleRight.value = theme['--bg-right-bubble'];
+      
+      // Si no es custom, ocultar config avanzada
+      if (themeName !== 'custom') {
+        toggleAdvancedSettings(false);
+      }
+    }
+
+    // Función para mostrar/ocultar configuración avanzada
+    function toggleAdvancedSettings(show) {
+      advancedSettingsVisible = show;
+      if (show) {
+        advancedSettings.style.maxHeight = '1000px';
+        arrow.classList.add('down');
+      } else {
+        advancedSettings.style.maxHeight = '0';
+        arrow.classList.remove('down');
+      }
+    }
+
+    // Función para ajustar posición manual
+    function applyManualPosition() {
+      const x = parseInt(posXInput.value) || 0;
+      const y = parseInt(posYInput.value) || 0;
+      
+      // Aplicar desplazamiento a la posición actual
+      const chatConfig = chatPositions[currentPosition];
+      
+      // Botón
+      chatToggleBtn.style.left = chatConfig.button.left === 'auto' ? 'auto' : 
+        `calc(${chatConfig.button.left} + ${x}px)`;
+      chatToggleBtn.style.right = chatConfig.button.right === 'auto' ? 'auto' : 
+        `calc(${chatConfig.button.right} + ${x}px)`;
+      chatToggleBtn.style.top = chatConfig.button.top === 'auto' ? 'auto' : 
+        `calc(${chatConfig.button.top} + ${y}px)`;
+      chatToggleBtn.style.bottom = chatConfig.button.bottom === 'auto' ? 'auto' : 
+        `calc(${chatConfig.button.bottom} + ${y}px)`;
+      
+      // Ventana de chat
+      chatWrapper.style.left = chatConfig.window.left === 'auto' ? 'auto' : 
+        `calc(${chatConfig.window.left} + ${x}px)`;
+      chatWrapper.style.right = chatConfig.window.right === 'auto' ? 'auto' : 
+        `calc(${chatConfig.window.right} + ${x}px)`;
+      chatWrapper.style.top = chatConfig.window.top === 'auto' ? 'auto' : 
+        `calc(${chatConfig.window.top} + ${y}px)`;
+      chatWrapper.style.bottom = chatConfig.window.bottom === 'auto' ? 'auto' : 
+        `calc(${chatConfig.window.bottom} + ${y}px)`;
+      
+      // Tooltip
+      const tooltipConfig = chatConfig.tooltip;
+      chatTooltip.style.left = tooltipConfig.position.left === 'auto' ? 'auto' : 
+        `calc(${tooltipConfig.position.left} + ${x}px)`;
+      chatTooltip.style.right = tooltipConfig.position.right === 'auto' ? 'auto' : 
+        `calc(${tooltipConfig.position.right} + ${x}px)`;
+      chatTooltip.style.top = tooltipConfig.position.top === 'auto' ? 'auto' : 
+        `calc(${tooltipConfig.position.top} + ${y}px)`;
+      chatTooltip.style.bottom = tooltipConfig.position.bottom === 'auto' ? 'auto' : 
+        `calc(${tooltipConfig.position.bottom} + ${y}px)`;
+    }
+
+    // Mostrar el tooltip luego de 3 segundos si no se ha abierto el chat
+    setTimeout(() => {
+        if (!chatOpened) {
+            chatTooltip.classList.remove('hidden');
+            adjustTooltipPosition();
+        }
+    }, 3000);
+
+    // Función para abrir el chat
+    const openChat = () => {
+        chatOpened = true;
+        chatTooltip.classList.add('hidden');
+        chatWrapper.style.display = "flex";
+        document.querySelector('#chat-button').style.display = "none";
+        scrollToBottom();
+    };
+
+    // Cerrar el tooltip manualmente
+    function closeTooltip() {
+        chatTooltip.classList.add('hidden');
+    }
+
+    // Event listeners para abrir chat
+    document.getElementById('chat-button').addEventListener('click', openChat);
+    chatTooltip.addEventListener('click', openChat);
+
+    // Event listener para cerrar chat
+    closeChatBtn.addEventListener("click", () => {
+        chatWrapper.style.display = "none";
+        document.querySelector('#chat-button').style.display = "block";
+    });
+
+    // Configurar posición inicial
+    positionElements(currentPosition);
+
+    // Event listeners para botones de posición
+    document.querySelectorAll('.position-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            // Remover clase active de todos los botones
+            document.querySelectorAll('.position-btn').forEach(b => b.classList.remove('active'));
+            // Agregar clase active al botón clickeado
+            btn.classList.add('active');
+            
+            const position = btn.dataset.position;
+            currentPosition = position;
+            positionElements(position);
+        });
+    });
+
+    // Event listeners para los controles de color
+    primaryColorInput.addEventListener('input', updateColors);
+    bgColorInput.addEventListener('input', updateColors);
+    textColorInput.addEventListener('input', updateColors);
+    textColorLeftBubble.addEventListener('input', updateColors);
+    textColorRightBubble.addEventListener('input', updateColors);
+    bgBubbleRight.addEventListener('input', updateColors);
+    applyPositionBtn.addEventListener('click', applyManualPosition);
+    
+    // Event listener para el selector de temas
+    themeSelect.addEventListener('change', (e) => {
+      applyTheme(e.target.value);
+    });
+    
+    // Event listener para mostrar/ocultar configuración avanzada
+    advancedToggle.addEventListener('click', () => {
+      toggleAdvancedSettings(!advancedSettingsVisible);
+    });
+
+    function scrollToBottom() {
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    function sendMessage() {
+        const text = messageInput.value.trim();
+        if (text !== "") {
+            const bubble = document.createElement("div");
+            bubble.className = "chat-bubble right";
+            bubble.textContent = text;
+            chatMessages.appendChild(bubble);
+            messageInput.value = "";
+            updateStatus("En línea");
+            scrollToBottom();
+            
+            // Respuesta automática después de 1 segundo
+            setTimeout(() => {
+                const reply = document.createElement("div");
+                reply.className = "chat-bubble left";
+                reply.textContent = "Gracias por tu mensaje. ¿En qué más podemos ayudarte?";
+                chatMessages.appendChild(reply);
+                scrollToBottom();
+            }, 1000);
+        }
+    }
+
+    messageInput.addEventListener("input", function () {
+        if (messageInput.value.trim()) {
+            updateStatus("typing");
+            clearTimeout(typingTimeout);
+            typingTimeout = setTimeout(() => updateStatus("En línea"), 2000);
+        } else {
+            updateStatus("En línea");
+        }
+    });
+
+    function updateStatus(status) {
+        if (status === "typing") {
+            chatStatus.innerHTML = `<span class="typing-dots"><span></span><span></span><span></span></span>`;
+        } else {
+            chatStatus.textContent = status;
+        }
+    }
+
+    messageInput.addEventListener("keypress", function (e) {
+        if (e.key === "Enter") {
+            e.preventDefault();
+            sendMessage();
+        }
+    });
+
+    fileInput.addEventListener("change", function () {
+        if (this.files.length > 0) {
+            const file = this.files[0];
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                const bubble = document.createElement("div");
+                bubble.className = "chat-bubble right";
+                const caption = messageInput.value.trim();
+                bubble.innerHTML = `
+                    ${caption ? `<div>${caption}</div>` : ""}
+                    <img src="${e.target.result}" alt="Imagen adjunta" />
+               
+                `;
+                chatMessages.appendChild(bubble);
+                messageInput.value = "";
+                scrollToBottom();
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+
+    chatMessages.addEventListener("scroll", function () {
+        const atBottom = chatMessages.scrollTop + chatMessages.clientHeight >= chatMessages.scrollHeight - 20;
+        scrollBtn.style.display = atBottom ? "none" : "flex";
+    });
+
+    scrollBtn.addEventListener("click", scrollToBottom);
+
+    // Ajustar tooltip cuando cambia el tamaño de la ventana
+    window.addEventListener('resize', () => {
+        if (!chatTooltip.classList.contains('hidden')) {
+            adjustTooltipPosition();
+        }
+    });
+  </script>
+</body>
+</html>
