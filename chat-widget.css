@@ -85,10 +85,6 @@
         constant-pulse 2s infinite ease-out;
 }
 
-/* Resto de tus estilos existentes... */
-
-
-/* Resto de tus estilos existentes... */
 @-webkit-keyframes tm-box-button-visible{from{-webkit-transform:scale(0);transform:scale(0)}30.001%{-webkit-transform:scale(1.2);transform:scale(1.2)}62.999%{-webkit-transform:scale(1);transform:scale(1)}100%{-webkit-transform:scale(1);transform:scale(1)}}
 @keyframes tm-box-button-visible{from{-webkit-transform:scale(0);transform:scale(0)}30.001%{-webkit-transform:scale(1.2);transform:scale(1.2)}62.999%{-webkit-transform:scale(1);transform:scale(1)}100%{-webkit-transform:scale(1);transform:scale(1)}}.tm-box-button-disable{-webkit-animation:tm-box-button-disable .3s ease-out forwards 1;animation:tm-box-button-disable .3s ease-out forwards 1}
 @-webkit-keyframes tm-box-button-disable{from{-webkit-transform:scale(1);transform:scale(1)}50.001%{-webkit-transform:scale(.5);transform:scale(.5)}92.999%{-webkit-transform:scale(0);transform:scale(0)}100%{-webkit-transform:scale(0);transform:scale(0)}}
@@ -160,8 +156,6 @@
     display: none;
 }
 
-
-
 .chat-wrapper {
   position: fixed;
   width: 100%;
@@ -182,6 +176,7 @@
   flex-direction: column;
   background: var(--primary-color);
   color: var(--text-left-bubble);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
 }
 
 .chat-header-top {
@@ -306,12 +301,14 @@
   z-index: 10;
   box-shadow: 0 2px 5px rgba(0,0,0,0.2);
 }
-
+.typing-dots{
+  padding: 5px;
+}
 .typing-dots span {
   display: inline-block;
   width: 6px;
   height: 6px;
-  background-color: #d4eaff;
+  background-color: var(--primary-color);
   border-radius: 50%;
   margin: 0 2px;
   animation: blink 1.4s infinite both;
