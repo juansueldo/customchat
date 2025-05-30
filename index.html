@@ -74,13 +74,17 @@
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
             padding: 20px;
         }
+        #applyConfig{
+            background: var(--primary-color); 
+            border: 1px solid var(--primary-color);
+            color: var(--text-left-bubble);
+        }
         #applyConfig, #resetConfig{
-            background: #7b3fe4; 
-            border: 1px solid #612ac1;
+            
             margin: 15px 0px;
             padding: 7px;
             width: 100%;
-            color: #fff;   
+             
             display: flex;
             align-items: center;
             justify-content: center;
@@ -92,6 +96,7 @@
         #resetConfig{
            background: #454547; 
            border: 1px solid #141218; 
+           color: #fff;  
         }
         
     </style>
@@ -119,6 +124,7 @@
                 <label for="theme">Tema predefinido:</label>
                 <select id="theme">
                     <option value="default" selected>Default</option>
+                    <option value="pink">Rosa</option>
                     <option value="dark">Oscuro</option>
                     <option value="light">Claro</option>
                     <option value="purple">Morado</option>
