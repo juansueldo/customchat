@@ -340,7 +340,7 @@
 @media (max-width: 500px) {
   .chat-wrapper {
     width: 100vw !important;
-    height: 100vh !important;
+    height: 100%;
     min-width: 100vw !important;
     border-radius: 0px !important;
     top: 0 !important;
