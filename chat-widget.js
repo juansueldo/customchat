@@ -84,7 +84,7 @@ class ChatWidget {
     // Estilos iniciales para el wrapper
     this.chatWrapper.style.position = 'fixed';
     this.chatWrapper.style.width = '350px';
-    this.chatWrapper.style.height = '500px';
+    this.chatWrapper.style.height = '600px';
     this.chatWrapper.style.borderRadius = '12px';
     this.chatWrapper.style.boxShadow = '0 5px 40px rgba(0,0,0,0.16)';
     this.chatWrapper.style.display = 'none'; // Inicia oculto
@@ -110,8 +110,6 @@ class ChatWidget {
             </svg>
           </button>
         </div>
-        <hr style="color: currentColor; width: 100%;">
-        <div class="chat-status" id="chatStatus">${this.config.onlineText}</div>
       </div>
 
       <div class="chat-messages" id="chatMessages">
@@ -125,7 +123,7 @@ class ChatWidget {
           <path d="M8 15l4 4" />
         </svg>
       </button>
-
+      <span id="typingDots" class="typing-dots hidden"><span></span><span></span><span></span></span>
       <div class="chat-footer">
         <input type="text" id="messageInput" placeholder="Escribe un mensaje..." />
         <label class="btn attach" for="fileInput">
@@ -154,7 +152,8 @@ class ChatWidget {
     this.messageInput = this.chatWrapper.querySelector('#messageInput');
     this.scrollBtn = this.chatWrapper.querySelector('#scrollBtn');
     this.fileInput = this.chatWrapper.querySelector('#fileInput');
-    this.chatStatus = this.chatWrapper.querySelector('#chatStatus');
+    this.typingDots = this.chatWrapper.querySelector('#typingDots');
+    //this.chatStatus = this.chatWrapper.querySelector('#chatStatus');
   }
 
   setupEvents() {
@@ -196,7 +195,7 @@ class ChatWidget {
     this.scrollBtn.addEventListener('click', () => this.scrollToBottom());
 
     // Escribiendo...
-    this.messageInput.addEventListener('input', () => {
+    /*this.messageInput.addEventListener('input', () => {
       if (this.messageInput.value.trim()) {
         this.updateStatus('typing');
         clearTimeout(this.typingTimeout);
@@ -204,7 +203,7 @@ class ChatWidget {
       } else {
         this.updateStatus(this.config.onlineText);
       }
-    });
+    });*/
   }
 
   setupTooltip() {
@@ -311,9 +310,9 @@ class ChatWidget {
 
   updateStatus(status) {
     if (status === 'typing') {
-      this.chatStatus.innerHTML = `<span class="typing-dots"><span></span><span></span><span></span></span>`;
+      this.typingDots.classList.remove('hidden');
     } else {
-      this.chatStatus.textContent = status;
+      this.typingDots.classList.add('hidden');
     }
   }
 
