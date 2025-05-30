@@ -30,6 +30,8 @@ class ChatWidget {
   }
 
   init() {
+    const rgbValues = this.defaults.primaryColor.match(/\d+/g).slice(0, 3);
+    document.documentElement.style.setProperty('--primary-color-rgb', rgbValues.join(', '));
     // Crear elementos del DOM
     this.createElements();
     // Aplicar configuración inicial
