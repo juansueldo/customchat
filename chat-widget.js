@@ -264,8 +264,10 @@ class ChatWidget {
         this.config.onMessageSent(text);
       }
 
+      this.updateStatus('typing');
       // Respuesta automática
       setTimeout(() => {
+        chatWidget.updateStatus('');
         this.addMessage(this.config.responseMessage, 'left');
       }, this.config.autoResponseDelay);
     }
