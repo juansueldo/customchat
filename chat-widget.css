@@ -5,10 +5,10 @@
   --text-left-bubble: #fff;
   --bg-right-bubble: #e5e5ea;
   --text-right-bubble: #000;
+  --primary-color-rgb: rgb(123, 63, 228); 
 }
 
-* { box-sizing: border-box; }
-body { margin: 0; font-family: Arial, sans-serif; background: #f0f2f5; color: var(--text-color); }
+
 
 #chat-launcher {
     position: fixed;
@@ -26,11 +26,99 @@ body { margin: 0; font-family: Arial, sans-serif; background: #f0f2f5; color: va
     align-items: center;
     justify-content: center;
     cursor: pointer;
+    -webkit-animation: 
+        tm-box-button-visible 1s ease-out forwards 1,
+        constant-pulse 2s infinite ease-out;
+    animation: 
+        tm-box-button-visible 1s ease-out forwards 1,
+        constant-pulse 2s infinite ease-out;
     transition: opacity 0.3s ease, transform 0.3s ease, visibility 0.3s ease;
+    position: relative;
+    z-index: 1;
+}
+
+/* Efecto de ondas de radar */
+#chat-button::before,
+#chat-button::after {
+    content: '';
+    position: absolute;
+    top: -10px;
+    left: -10px;
+    right: -10px;
+    bottom: -10px;
+    border: 2px solid var(--primary-color);
+    border-radius: 50%;
+    animation: radar-wave 2s linear infinite;
+    opacity: 0;
+    z-index: -1;
+}
+
+#chat-button::after {
+    animation-delay: 1s; /* Cambiado de 5s a 1s para mejor efecto */
+}
+
+@keyframes radar-wave {
+    0% {
+        transform: scale(0.5);
+        opacity: 0.8;
+    }
+    100% {
+        transform: scale(1.5);
+        opacity: 0;
+    }
+}
+
+/* Nueva animación constante de pulsación */
+@keyframes constant-pulse {
+    0%, 100% {
+        box-shadow: 0 0 0 0 rgba(var(--primary-color-rgb), 0.4);
+    }
+    50% {
+        box-shadow: 0 0 0 8px rgba(var(--primary-color-rgb), 0);
+    }
 }
 
 #chat-button:hover {
     transform: scale(1.1);
+    animation: 
+        tm-box-button-visible 1s ease-out forwards 1,
+        constant-pulse 2s infinite ease-out;
+}
+
+/* Resto de tus estilos existentes... */
+
+
+/* Resto de tus estilos existentes... */
+@-webkit-keyframes tm-box-button-visible{from{-webkit-transform:scale(0);transform:scale(0)}30.001%{-webkit-transform:scale(1.2);transform:scale(1.2)}62.999%{-webkit-transform:scale(1);transform:scale(1)}100%{-webkit-transform:scale(1);transform:scale(1)}}
+@keyframes tm-box-button-visible{from{-webkit-transform:scale(0);transform:scale(0)}30.001%{-webkit-transform:scale(1.2);transform:scale(1.2)}62.999%{-webkit-transform:scale(1);transform:scale(1)}100%{-webkit-transform:scale(1);transform:scale(1)}}.tm-box-button-disable{-webkit-animation:tm-box-button-disable .3s ease-out forwards 1;animation:tm-box-button-disable .3s ease-out forwards 1}
+@-webkit-keyframes tm-box-button-disable{from{-webkit-transform:scale(1);transform:scale(1)}50.001%{-webkit-transform:scale(.5);transform:scale(.5)}92.999%{-webkit-transform:scale(0);transform:scale(0)}100%{-webkit-transform:scale(0);transform:scale(0)}}
+@keyframes tm-box-button-disable{from{-webkit-transform:scale(1);transform:scale(1)}50.001%{-webkit-transform:scale(.5);transform:scale(.5)}92.999%{-webkit-transform:scale(0);transform:scale(0)}100%{-webkit-transform:scale(0);transform:scale(0)}}.tm-box-button-social{display:none}.tm-box-button-social-item{position:relative;display:block;margin:0 10px 10px 0;width:45px;height:44px;background-size:100%;border-radius:25px;-webkit-box-shadow:0 8px 6px -6px rgba(33,33,33,.2);-moz-box-shadow:0 8px 6px -6px rgba(33,33,33,.2);box-shadow:0 8px 6px -6px rgba(33,33,33,.2);cursor:pointer}.tm-box-button-social-item:hover{-webkit-box-shadow:0 0 6px rgba(0,0,0,.16),0 6px 12px rgba(0,0,0,.32);box-shadow:0 0 6px rgba(0,0,0,.16),0 6px 12px rgba(0,0,0,.32);-webkit-transition:box-shadow .17s cubic-bezier(0,0,.2,1);transition:box-shadow .17s cubic-bezier(0,0,.2,1)}.ui-icon.tm-box-button-social-item,.ui-icon.connector-icon-45{width:46px;height:46px;--ui-icon-size-md:46px }
+
+#chat-button:hover {
+    transform: scale(1.1);
+}
+.chat-toggle-btn {
+  position: fixed;
+  background: var(--primary-color);
+  color: var(--text-left-bubble);
+  border: none;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  font-size: 28px;
+  cursor: pointer;
+  box-shadow: 0 4px 10px rgba(var(--primary-color-rgb), 0.25);
+  border: 3px solid rgba(var(--primary-color-rgb), 0.05);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  -webkit-animation:tm-box-button-visible 1s ease-out forwards 1;
+    animation:tm-box-button-visible 1s ease-out forwards 1
+}
+
+.chat-toggle-btn:hover {
+  transform: scale(1.1);
 }
 
 #chat-tooltip {
@@ -72,27 +160,7 @@ body { margin: 0; font-family: Arial, sans-serif; background: #f0f2f5; color: va
     display: none;
 }
 
-.chat-toggle-btn {
-  position: fixed;
-  background: var(--primary-color);
-  color: var(--text-left-bubble);
-  border: none;
-  width: 50px;
-  height: 50px;
-  border-radius: 50%;
-  font-size: 28px;
-  cursor: pointer;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
-  z-index: 1000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: transform 0.2s;
-}
 
-.chat-toggle-btn:hover {
-  transform: scale(1.1);
-}
 
 .chat-wrapper {
   position: fixed;
