@@ -741,8 +741,11 @@
     // Función para aplicar un tema
     function applyTheme(themeName) {
       if (themeName === 'custom') {
+        advancedSettings.classList.remove('hidden');
         toggleAdvancedSettings(true);
         return;
+      }else{
+        advancedSettings.classList.add('hidden');
       }
       
       const theme = themes[themeName];
