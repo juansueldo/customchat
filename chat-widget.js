@@ -357,6 +357,14 @@ class ChatWidget {
         '--text-left-bubble': '#ffffff',
         '--text-right-bubble': '#000000',
         '--bg-right-bubble': '#bee3f8'
+      },
+      'pink':{
+        '--primary-color': '#d8125b',
+        '--bg-color': '#ffffff',
+        '--text-color': '#000000',
+        '--text-left-bubble': '#ffffff',
+        '--text-right-bubble': '#ffffff',
+        '--bg-right-bubble': '#2c2e39'
       }
     };
 
