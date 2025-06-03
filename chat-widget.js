@@ -503,20 +503,140 @@ class ChatWidget {
         opacity: 0.9;
         color: var(--text-wg-left-bubble);
       }
-
       @media (max-width: 500px) {
         .chat-wg-wrapper {
-          width: 100vw !important;
-          height: 100vh !important;
-          min-width: 100vw !important;
-          border-radius: 0px !important;
+          position: fixed !important;
           top: 0 !important;
           left: 0 !important;
-          right: 0 !important;
-          bottom: 0 !important;
+          width: 100vw !important;
+          height: 100dvh !important;
+          min-height: 100dvh !important;
+          border-radius: 0 !important;
           transform: none !important;
+          z-index: 9999;
+          display: flex;
+          flex-direction: column;
         }
-      }
+
+
+  @supports not (height: 100dvh) {
+    .chat-wg-wrapper {
+      height: 100vh !important;
+      width: 100vw !important;
+      min-height: 100vh !important;
+    }
+  }
+
+  .chat-wg-input-wrapper input[type="text"],
+  .chat-wg-input-wrapper textarea {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0.5rem;
+    font-size: 1rem;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+  }
+}      @media (max-width: 500px) {
+        .chat-wg-wrapper {
+          position: fixed !important;
+          top: 0 !important;
+          left: 0 !important;
+          width: 100vw !important;
+          height: 100dvh !important;
+          min-height: 100dvh !important;
+          border-radius: 0 !important;
+          transform: none !important;
+          z-index: 9999;
+          display: flex;
+          flex-direction: column;
+        }
+
+
+  @supports not (height: 100dvh) {
+    .chat-wg-wrapper {
+      height: 100vh !important;
+      width: 100vw !important;
+      min-height: 100vh !important;
+    }
+  }
+
+  .chat-wg-input-wrapper input[type="text"],
+  .chat-wg-input-wrapper textarea {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0.5rem;
+    font-size: 1rem;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+  }
+}      @media (max-width: 500px) {
+        .chat-wg-wrapper {
+          position: fixed !important;
+          top: 0 !important;
+          left: 0 !important;
+          width: 100vw !important;
+          height: 100dvh !important;
+          min-height: 100dvh !important;
+          border-radius: 0 !important;
+          transform: none !important;
+          z-index: 9999;
+          display: flex;
+          flex-direction: column;
+        }
+
+
+  @supports not (height: 100dvh) {
+    .chat-wg-wrapper {
+      height: 100vh !important;
+      width: 100vw !important;
+      min-height: 100vh !important;
+    }
+  }
+
+  .chat-wg-input-wrapper input[type="text"],
+  .chat-wg-input-wrapper textarea {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0.5rem;
+    font-size: 1rem;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+  }
+}      @media (max-width: 500px) {
+        .chat-wg-wrapper {
+          position: fixed !important;
+          top: 0 !important;
+          left: 0 !important;
+          width: 100vw !important;
+          height: 100dvh !important;
+          min-height: 100dvh !important;
+          border-radius: 0 !important;
+          transform: none !important;
+          z-index: 9999;
+          display: flex;
+          flex-direction: column;
+        }
+
+
+  @supports not (height: 100dvh) {
+    .chat-wg-wrapper {
+      height: 100vh !important;
+      width: 100vw !important;
+      min-height: 100vh !important;
+    }
+  }
+
+  .chat-wg-input-wrapper input[type="text"],
+  .chat-wg-input-wrapper textarea {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0.5rem;
+    font-size: 1rem;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+  }
+}
+      
       `;
       document.head.appendChild(styles);
     }
