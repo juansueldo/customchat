@@ -1,8 +1,7 @@
 class ChatWidget {
   constructor(options = {}) {
-    // Configuración por defecto
     this.defaults = {
-      position: 'center-bottom',
+      position: 'bottom-middle',
       theme: 'default',
       primaryColor: '#7b3fe4',
       bgColor: '#ffffff',
@@ -24,15 +23,505 @@ class ChatWidget {
 
     // Fusionar opciones con defaults
     this.config = { ...this.defaults, ...options };
-
+    this.lastMessageDate = null;
+    this.selectedFile = null;
+    this.filePreviewElement = null;
     // Inicializar
     this.init();
+  }
+ _initStyles() {
+    if (!document.getElementById('chat-widget-styles')) {
+      const styles = document.createElement('style');
+      styles.id = 'chat-widget-styles';
+      styles.textContent = `
+      :root {
+        --primary-wg-color: #7b3fe4;
+        --bg-wg-color: #fff;
+        --text-wg-color: #000;
+        --text-wg-left-bubble: #fff;
+        --bg-wg-right-bubble: #e5e5ea;
+        --text-wg-right-bubble: #000;
+        --primary-wg-color-rgb: rgb(123, 63, 228); 
+      }
+
+      #chat-wg-launcher {
+          position: fixed;
+          z-index: 9999;
+      }
+
+      #chat-wg-button {
+          background-color: var(--primary-wg-color);
+          color: var(--bg-wg-color);
+          font-size: 24px !important;
+          border-radius: 50%;
+          width: 50px;
+          height: 50px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          -webkit-animation: 
+              tm-box-button-visible 1s ease-out forwards 1,
+              constant-pulse 2s infinite ease-out;
+          animation: 
+              tm-box-button-visible 1s ease-out forwards 1,
+              constant-pulse 2s infinite ease-out;
+          transition: opacity 0.3s ease, transform 0.3s ease, visibility 0.3s ease;
+          position: relative;
+          z-index: 1;
+      }
+
+      #chat-wg-button::before,
+      #chat-wg-button::after {
+          content: '';
+          position: absolute;
+          top: -10px;
+          left: -10px;
+          right: -10px;
+          bottom: -10px;
+          border: 2px solid var(--primary-wg-color);
+          border-radius: 50%;
+          animation: radar-wave 2s linear infinite;
+          opacity: 0;
+          z-index: -1;
+      }
+
+      #chat-wg-button::after {
+          animation-delay: 1s; 
+      }
+
+      @keyframes radar-wave {
+          0% {
+              transform: scale(0.5);
+              opacity: 0.8;
+          }
+          100% {
+              transform: scale(1.5);
+              opacity: 0;
+          }
+      }
+
+      @keyframes constant-pulse {
+          0%, 100% {
+              box-shadow: 0 0 0 0 rgba(var(--primary-wg-color-rgb), 0.4);
+          }
+          50% {
+              box-shadow: 0 0 0 8px rgba(var(--primary-wg-color-rgb), 0);
+          }
+      }
+
+      #chat-wg-button:hover {
+          transform: scale(1.1);
+          animation: 
+              tm-box-button-visible 1s ease-out forwards 1,
+              constant-pulse 2s infinite ease-out;
+      }
+
+      @-webkit-keyframes tm-box-button-visible{from{-webkit-transform:scale(0);transform:scale(0)}30.001%{-webkit-transform:scale(1.2);transform:scale(1.2)}62.999%{-webkit-transform:scale(1);transform:scale(1)}100%{-webkit-transform:scale(1);transform:scale(1)}}
+      @keyframes tm-box-button-visible{from{-webkit-transform:scale(0);transform:scale(0)}30.001%{-webkit-transform:scale(1.2);transform:scale(1.2)}62.999%{-webkit-transform:scale(1);transform:scale(1)}100%{-webkit-transform:scale(1);transform:scale(1)}}.tm-box-button-disable{-webkit-animation:tm-box-button-disable .3s ease-out forwards 1;animation:tm-box-button-disable .3s ease-out forwards 1}
+      @-webkit-keyframes tm-box-button-disable{from{-webkit-transform:scale(1);transform:scale(1)}50.001%{-webkit-transform:scale(.5);transform:scale(.5)}92.999%{-webkit-transform:scale(0);transform:scale(0)}100%{-webkit-transform:scale(0);transform:scale(0)}}
+      @keyframes tm-box-button-disable{from{-webkit-transform:scale(1);transform:scale(1)}50.001%{-webkit-transform:scale(.5);transform:scale(.5)}92.999%{-webkit-transform:scale(0);transform:scale(0)}100%{-webkit-transform:scale(0);transform:scale(0)}}.tm-box-button-social{display:none}.tm-box-button-social-item{position:relative;display:block;margin:0 10px 10px 0;width:45px;height:44px;background-size:100%;border-radius:25px;-webkit-box-shadow:0 8px 6px -6px rgba(33,33,33,.2);-moz-box-shadow:0 8px 6px -6px rgba(33,33,33,.2);box-shadow:0 8px 6px -6px rgba(33,33,33,.2);cursor:pointer}.tm-box-button-social-item:hover{-webkit-box-shadow:0 0 6px rgba(0,0,0,.16),0 6px 12px rgba(0,0,0,.32);box-shadow:0 0 6px rgba(0,0,0,.16),0 6px 12px rgba(0,0,0,.32);-webkit-transition:box-shadow .17s cubic-bezier(0,0,.2,1);transition:box-shadow .17s cubic-bezier(0,0,.2,1)}.ui-icon.tm-box-button-social-item,.ui-icon.connector-icon-45{width:46px;height:46px;--ui-icon-size-md:46px }
+
+      #chat-wg-button:hover {
+          transform: scale(1.1);
+      }
+
+      .chat-wg-toggle-btn {
+        position: fixed;
+        background: var(--primary-wg-color);
+        color: var(--text-wg-left-bubble);
+        border: none;
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        font-size: 28px;
+        cursor: pointer;
+        box-shadow: 0 4px 10px rgba(var(--primary-wg-color-rgb), 0.25);
+        border: 3px solid rgba(var(--primary-wg-color-rgb), 0.05);
+        z-index: 1000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        -webkit-animation:tm-box-button-visible 1s ease-out forwards 1;
+          animation:tm-box-button-visible 1s ease-out forwards 1
+      }
+
+      .chat-wg-toggle-btn:hover {
+        transform: scale(1.1);
+      }
+
+      #chat-wg-tooltip {
+          position: absolute;
+          background: var(--bg-wg-color);
+          border-radius: 10px;
+          padding: 10px;
+          box-shadow: 0 5px 10px rgba(0,0,0,0.1);
+          border: 2px solid var(--primary-wg-color);
+          width: 300px;
+          cursor: pointer;
+          z-index: 9998;
+      }
+
+      .tooltip-wg-content {
+          position: relative;
+          font-family: sans-serif;
+          font-size: 14px;
+          color: var(--text-wg-color);
+      }
+
+      .tooltip-wg-header {
+          display: flex;
+          align-items: center;
+          gap: 0.4rem;
+      }
+
+      .tooltip-wg-header img{
+          width: 30px;
+          height: 30px;
+      }
+          
+      .close-wg-tooltip {
+        position: absolute;
+        top: 0;
+        right: 5px;
+        cursor: pointer;
+        font-size: 16px;
+      }
+
+      .hidden-wg {
+        display: none !important;
+      }
+
+      .chat-wg-wrapper {
+        position: fixed;
+        width: 100%;
+        max-width: 360px;
+        height: 500px;
+        background: var(--bg-wg-color);
+        border-radius: 15px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+        display: none;
+        flex-direction: column;
+        overflow: hidden;
+        z-index: 999;
+        transition: all 0.3s ease;
+      }
+
+      .chat-wg-header {
+        display: flex;
+        flex-direction: column;
+        background: var(--primary-wg-color);
+        color: var(--text-wg-left-bubble);
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+      }
+
+      .chat-wg-header-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px;
+      }
+
+      .chat-wg-header-top img {
+        height: 30px;
+        margin-right: 8px;
+      }
+
+      .chat-wg-header-title {
+        display: flex;
+        align-items: center;
+        font-weight: bold;
+        font-size: 1rem;
+      }
+
+      .chat-wg-header button {
+        background: transparent;
+        border: none;
+        color: var(--text-wg-left-bubble);
+        font-size: 20px;
+        cursor: pointer;
+      }
+
+      .chat-wg-status {
+        font-size: 0.85rem;
+        padding: 0 12px 10px;
+        color: #d4eaff;
+      }
+
+      .chat-wg-messages {
+        flex: 1;
+        overflow-y: auto;
+        padding: 15px;
+        display: flex;
+        flex-direction: column;
+        position: relative;
+        background-image: url('bg-1.png');
+        background-size: cover;
+        background-repeat: no-repeat;
+        background-position: center center;
+        image-rendering: auto; 
+      }
+
+      .chat-wg-bubble {
+        padding: 10px 14px;
+        margin: 6px 0;
+        border-radius: 18px;
+        word-wrap: break-word;
+        font-size: 0.95rem;
+      }
+
+      .chat-wg-bubble img {
+        max-width: 100%;
+        border-radius: 10px;
+        margin-top: 5px;
+      }
+        
+      .chat-wg-message-container-left-wg{
+        align-self: flex-start;
+        margin-left: 20px
+      }
+      
+      .chat-wg-message-container-right-wg{
+        align-self: flex-end;
+      }
+      
+      .left-wg { align-self: flex-start; text-align: left; background-color: var(--primary-wg-color); color: var(--text-wg-left-bubble); }
+      .right-wg { align-self: flex-end; text-align: right; background-color: var(--bg-wg-right-bubble); color: var(--text-wg-right-bubble); }
+
+      .chat-wg-footer {
+        display: flex;
+        gap: 6px;
+        padding: 10px;
+        border-top: 1px solid #ddd;
+        align-items: center;
+      }
+
+      .chat-wg-footer input[type="file"] { display: none; }
+
+      .chat-wg-footer .btn {
+        color: var(--text-wg-color);
+        border: none;
+        padding: 5px;
+        border-radius: 8px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: none; 
+      }
+
+      .chat-wg-footer .btn.attach {
+        cursor: pointer;
+        outline: none;
+        border: none;
+        background: none;
+        transition: opacity 0.2s ease;
+      }
+
+      .chat-wg-footer .attach:hover {
+        opacity: 0.6;
+      }
+      .chat-wg-footer .btn:hover{
+        opacity: 0.6;
+      }
+
+      .chat-wg-footer input[type="text"] {
+        flex: 1;
+        padding: 10px;
+        border: 1px solid #ccc;
+        border-radius: 8px;
+      }
+
+      .scroll-wg-bottom-btn {
+        position: absolute;
+        bottom: 75px;
+        right: 10px;
+        display: flex;
+        background: var(--primary-wg-color);
+        opacity: 0.9;
+        color: white;
+        border: none;
+        border-radius: 50%;
+        width: 30px;
+        height: 30px;
+        font-size: 16px;
+        justify-content: center;
+        align-items: center;
+        cursor: pointer;
+        z-index: 10;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+      }
+      .typing-wg-dots{
+        position: absolute;
+        bottom: 65px;
+        left: 10px;
+      }
+      .typing-wg-dots span {
+        display: inline-block;
+        width: 6px;
+        height: 6px;
+        background-color: var(--primary-wg-color);
+        border-radius: 50%;
+        margin: 0 2px;
+        animation: blink 1.4s infinite both;
+      }
+
+      .typing-wg-dots span:nth-child(2) { animation-delay: 0.2s; }
+      .typing-wg-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+      @keyframes blink {
+        0%, 80%, 100% { opacity: 0; }
+        40% { opacity: 1; }
+      }
+
+      #messageInput{
+        border: none;
+        outline: none;
+        background: var(--bg-wg-color);
+        color: var(--text-wg-color);
+      }
+      #messageInput::placeholder {
+        color: var(--text-wg-color);
+        opacity: 0.5;
+      }
+      #messageInput:focus{
+        border: none;
+        outline: none;
+      }
+      .chat-wg-message-date-right-wg {
+        font-size: 0.75rem;
+        margin-top: 4px;
+        font-weight: bold;
+        text-shadow: 1px 1px 2px var(--bg-wg-color);
+        text-align: right;
+        color: var(--text-wg-color);
+      }
+
+      .chat-wg-message-date-left-wg {
+        font-size: 0.75rem;
+        margin-top: 4px;
+        font-weight: bold;
+        text-shadow: 1px 1px 2px var(--bg-wg-color);
+        text-align: left;
+        color: var(--text-wg-color);
+      }
+
+      .chat-wg-date-separator {
+        text-align: center;
+        margin: 15px 0;
+        position: relative;
+      }
+
+      .chat-wg-date-separator::before {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 0;
+        right: 0;
+        height: 1px;
+        background: var(--text-wg-color);
+        opacity: 0.4;
+        z-index: 1;
+      }
+
+      .chat-wg-date-separator span {
+        background: var(--primary-wg-color);
+        padding: 4px 12px;
+        font-size: 0.8rem;
+        color: var(--text-wg-left-bubble);
+        border-radius: 12px;
+        border: 1px solid var(--text-wg-color);
+        position: relative;
+        z-index: 2;
+      }
+      
+      .file-wg-preview {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px;
+        border-radius: 8px;
+        margin: 0 10px 5px 10px;
+      }
+
+      .file-wg-preview img {
+        width: 50px;
+        height: 50px;
+        object-fit: cover;
+        border-radius: 6px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      }
+
+      .file-wg-preview-info {
+        flex: 1;
+        font-size: 0.85rem;
+        color: var(--text-wg-color);
+      }
+
+      .file-wg-preview-info div:first-child {
+        font-weight: 500;
+        margin-bottom: 2px;
+      }
+
+      .file-wg-preview-remove {
+        border: none;
+        border-radius: 50%;
+        width: 24px;
+        height: 24px;
+        cursor: pointer;
+        color: var(--text-wg-left-bubble);
+        background: var(--primary-wg-color);
+        font-size: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: background-color 0.2s ease;
+      }
+
+      .file-wg-preview-remove:hover {
+        opacity: 0.8;
+      }
+      
+      .bot-wg-logo{
+        position: absolute;
+        left: 1px;
+        padding: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-left: 3px;
+        height: 28px;
+        width: 28px;
+        border-radius: 50%;
+        background: var(--primary-wg-color);
+        opacity: 0.9;
+        color: var(--text-wg-left-bubble);
+      }
+
+      @media (max-width: 500px) {
+        .chat-wg-wrapper {
+          width: 100vw !important;
+          height: 100vh !important;
+          min-width: 100vw !important;
+          border-radius: 0px !important;
+          top: 0 !important;
+          left: 0 !important;
+          right: 0 !important;
+          bottom: 0 !important;
+          transform: none !important;
+        }
+      }
+      `;
+      document.head.appendChild(styles);
+    }
+
   }
 
   init() {
     const rgbValues = this.defaults.primaryColor.match(/\d+/g).slice(0, 3);
-    document.documentElement.style.setProperty('--primary-color-rgb', rgbValues.join(', '));
+    document.documentElement.style.setProperty('--primary-wg-color-rgb', rgbValues.join(', '));
     // Crear elementos del DOM
+    this._initStyles();
     this.createElements();
     // Aplicar configuración inicial
     this.applyTheme(this.config.theme);
@@ -41,20 +530,21 @@ class ChatWidget {
     this.setupEvents();
     // Mostrar tooltip después del delay
     this.setupTooltip();
+
   }
 
   createElements() {
     // Crear contenedor principal
     this.chatLauncher = document.createElement('div');
-    this.chatLauncher.id = 'chat-launcher';
+    this.chatLauncher.id = 'chat-wg-launcher';
     this.chatLauncher.style.position = 'fixed';
     this.chatLauncher.style.zIndex = '9999';
 
     // Botón del chat
     this.chatButton = document.createElement('div');
-    this.chatButton.id = 'chat-button';
+    this.chatButton.id = 'chat-wg-button';
     this.chatButton.innerHTML = `
-      <button class="chat-toggle-btn" id="chatToggleBtn">
+      <button class="chat-wg-toggle-btn" id="chatToggleBtn">
         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M21 14l-3 -3h-7a1 1 0 0 1 -1 -1v-6a1 1 0 0 1 1 -1h9a1 1 0 0 1 1 1v10" />
           <path d="M14 15v2a1 1 0 0 1 -1 1h-7l-3 3v-10a1 1 0 0 1 1 -1h2" />
@@ -64,27 +554,31 @@ class ChatWidget {
 
     // Tooltip
     this.chatTooltip = document.createElement('div');
-    this.chatTooltip.id = 'chat-tooltip';
-    this.chatTooltip.className = 'hidden';
+    this.chatTooltip.id = 'chat-wg-tooltip';
+    this.chatTooltip.className = 'hidden-wg';
     let imgChat = this.config.logoUrl !== '' ? `<img src="${this.config.logoUrl}">` : '';
     this.chatTooltip.innerHTML = `
-      <div class="tooltip-content">
-        <div class="tooltip-header">
+      <div class="tooltip-wg-content">
+        <div class="tooltip-wg-header">
         ${imgChat}
         <strong>${this.config.companyName}</strong><br></div>
         ${this.config.tooltipText}
-        <span class="close-tooltip">×</span>
+        <span class="close-wg-tooltip">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M18 6l-12 12" />
+              <path d="M6 6l12 12" />
+          </svg></span>
       </div>
     `;
 
     // Ventana del chat
     this.chatWrapper = document.createElement('div');
     this.chatWrapper.id = 'chatWrapper';
-    this.chatWrapper.className = 'chat-wrapper hidden';
+    this.chatWrapper.className = 'chat-wg-wrapper hidden-wg';
     // Estilos iniciales para el wrapper
     this.chatWrapper.style.position = 'fixed';
     this.chatWrapper.style.width = '350px';
-    this.chatWrapper.style.height = '600px';
+    this.chatWrapper.style.height = '550px';
     this.chatWrapper.style.borderRadius = '12px';
     this.chatWrapper.style.boxShadow = '0 5px 40px rgba(0,0,0,0.16)';
     this.chatWrapper.style.display = 'none'; // Inicia oculto
@@ -97,9 +591,9 @@ class ChatWidget {
     
     let imgChatWrapper = this.config.logoUrl !== '' ? `<img src="${this.config.logoUrl}">` : '';
     this.chatWrapper.innerHTML = `
-      <div class="chat-header">
-        <div class="chat-header-top">
-          <div class="chat-header-title">
+      <div class="chat-wg-header">
+        <div class="chat-wg-header-top">
+          <div class="chat-wg-header-title">
             ${imgChatWrapper}
             ${this.config.companyName}
           </div>
@@ -112,33 +606,34 @@ class ChatWidget {
         </div>
       </div>
 
-      <div class="chat-messages" id="chatMessages">
-        <div class="chat-bubble left">${this.config.welcomeMessage}</div>
+      <div class="chat-wg-messages" id="chatMessages">
+        <div class="chat-wg-bubble left-wg">${this.config.welcomeMessage}</div>
       </div>
 
-      <button class="scroll-bottom-btn hidden" id="scrollBtn">
+      <span id="typingDots" class="typing-wg-dots hidden-wg"><span></span><span></span><span></span></span>
+      <button class="scroll-wg-bottom-btn hidden-wg" id="scrollBtn">
         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M12 5l0 14" />
           <path d="M16 15l-4 4" />
           <path d="M8 15l4 4" />
         </svg>
       </button>
-      <span id="typingDots" class="typing-dots hidden"><span></span><span></span><span></span></span>
-      <div class="chat-footer">
-        <input type="text" id="messageInput" placeholder="Escribe un mensaje..." />
-        <label class="btn attach" for="fileInput">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M15 7l-6.5 6.5a1.5 1.5 0 0 0 3 3l6.5 -6.5a3 3 0 0 0 -6 -6l-6.5 6.5a4.5 4.5 0 0 0 9 9l6.5 -6.5" />
-          </svg>
-        </label>
-        <input type="file" id="fileInput" accept="image/*" />
-        <button class="btn" id="sendMessageBtn">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M10 14l11 -11" />
-            <path d="M21 3l-6.5 18a.55 .55 0 0 1 -1 0l-3.5 -7l-7 -3.5a.55 .55 0 0 1 0 -1l18 -6.5" />
-          </svg>
-        </button>
-      </div>
+      <div id="filePreview" class="file-wg-preview hidden-wg"></div>
+<div class="chat-wg-footer">
+  <input type="text" id="messageInput" placeholder="Escribe un mensaje..." />
+  <label class="btn attach" for="fileInput">
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M15 7l-6.5 6.5a1.5 1.5 0 0 0 3 3l6.5 -6.5a3 3 0 0 0 -6 -6l-6.5 6.5a4.5 4.5 0 0 0 9 9l6.5 -6.5" />
+    </svg>
+  </label>
+  <input type="file" id="fileInput" accept="image/*" />
+  <button class="btn" id="sendMessageBtn">
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M10 14l11 -11" />
+      <path d="M21 3l-6.5 18a.55 .55 0 0 1 -1 0l-3.5 -7l-7 -3.5a.55 .55 0 0 1 0 -1l18 -6.5" />
+    </svg>
+  </button>
+</div>
     `;
 
     // Añadir elementos al DOM
@@ -153,6 +648,7 @@ class ChatWidget {
     this.scrollBtn = this.chatWrapper.querySelector('#scrollBtn');
     this.fileInput = this.chatWrapper.querySelector('#fileInput');
     this.typingDots = this.chatWrapper.querySelector('#typingDots');
+    this.filePreview = this.chatWrapper.querySelector('#filePreview');
     //this.chatStatus = this.chatWrapper.querySelector('#chatStatus');
   }
 
@@ -162,7 +658,7 @@ class ChatWidget {
     this.chatTooltip.addEventListener('click', () => this.openChat());
 
     // Cerrar tooltip
-    this.chatTooltip.querySelector('.close-tooltip').addEventListener('click', (e) => {
+    this.chatTooltip.querySelector('.close-wg-tooltip').addEventListener('click', (e) => {
       e.stopPropagation();
       this.closeTooltip();
     });
@@ -189,7 +685,7 @@ class ChatWidget {
     this.messagesContainer.addEventListener('scroll', () => {
       const atBottom = this.messagesContainer.scrollTop + this.messagesContainer.clientHeight >= 
                       this.messagesContainer.scrollHeight - 20;
-      this.scrollBtn.className = atBottom ? 'hidden' : 'scroll-bottom-btn';
+      this.scrollBtn.className = atBottom ? 'hidden-wg' : 'scroll-wg-bottom-btn';
     });
 
     this.scrollBtn.addEventListener('click', () => this.scrollToBottom());
@@ -209,15 +705,15 @@ class ChatWidget {
   setupTooltip() {
     this.tooltipTimeout = setTimeout(() => {
       if (!this.chatOpened) {
-        this.chatTooltip.classList.remove('hidden');
+        this.chatTooltip.classList.remove('hidden-wg');
       }
     }, this.config.tooltipDelay);
   }
 
   openChat() {
     this.chatOpened = true;
-    this.chatTooltip.classList.add('hidden');
-    this.chatWrapper.classList.remove('hidden');
+    this.chatTooltip.classList.add('hidden-wg');
+    this.chatWrapper.classList.remove('hidden-wg');
     // Mostrar el wrapper con transición
     this.chatWrapper.style.display = 'flex';
     setTimeout(() => {
@@ -239,14 +735,14 @@ class ChatWidget {
     // Luego ocultar completamente
     setTimeout(() => {
         this.chatWrapper.style.display = 'none';
-        this.chatWrapper.classList.add('hidden');
+        this.chatWrapper.classList.add('hidden-wg');
     }, 300); // Debe coincidir con la duración de la transición
     
     this.chatButton.style.display = 'block';
   }
 
   closeTooltip() {
-    this.chatTooltip.classList.add('hidden');
+    this.chatTooltip.classList.add('hidden-wg');
   }
 
   scrollToBottom() {
@@ -255,66 +751,186 @@ class ChatWidget {
 
   sendMessage() {
     const text = this.messageInput.value.trim();
-    if (text !== '') {
-      this.addMessage(text, 'right');
+    
+    // Si hay archivo seleccionado
+    if (this.selectedFile) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        // Enviar mensaje con imagen y caption (si existe)
+        this.addMessage(text, 'right-wg', e.target.result);
+        
+        // Limpiar inputs y preview
+        this.messageInput.value = '';
+        this.removeFilePreview();
+        
+        // Callback si existe
+        if (this.config.onFileUpload) {
+          this.config.onFileUpload(this.selectedFile, text);
+        }
+        
+        // Respuesta automática
+        this.updateStatus('typing');
+        setTimeout(() => {
+          this.updateStatus('');
+          this.addMessage(this.config.responseMessage, 'left-wg');
+        }, this.config.autoResponseDelay);
+      };
+      reader.readAsDataURL(this.selectedFile);
+    }
+    // Si solo hay texto
+    else if (text !== '') {
+      this.addMessage(text, 'right-wg');
       this.messageInput.value = '';
-      this.updateStatus(this.config.onlineText);
       
       if (this.config.onMessageSent) {
         this.config.onMessageSent(text);
       }
-
-      this.updateStatus('typing');
+      
       // Respuesta automática
+      this.updateStatus('typing');
       setTimeout(() => {
-        chatWidget.updateStatus('');
-        this.addMessage(this.config.responseMessage, 'left');
+        this.updateStatus('');
+        this.addMessage(this.config.responseMessage, 'left-wg');
       }, this.config.autoResponseDelay);
     }
   }
 
   addMessage(text, direction, imageUrl = null) {
-    const bubble = document.createElement('div');
-    bubble.className = `chat-bubble ${direction}`;
+    const now = new Date();
+    const messageDate = this.formatDate(now);
+    const messageDateOnly = this.getDateOnly(now);
     
+    if (!this.lastMessageDate || this.lastMessageDate !== messageDateOnly) {
+      this.addDateSeparator(messageDateOnly);
+      this.lastMessageDate = messageDateOnly;
+    }
+    
+    const messageContainer = document.createElement('div');
+    messageContainer.className = `chat-wg-message-container-${direction}`;
+    
+    const bubble = document.createElement('div');
+    bubble.className = `chat-wg-bubble ${direction}`;
+    
+    const dateElement = document.createElement('div');
+    dateElement.className = `chat-wg-message-date-${direction}`;
+    dateElement.textContent = this.formatTime(now);
+    if(direction == 'left-wg'){
+      messageContainer.innerHTML = `
+      <div class="bot-wg-logo">
+        <img src="chat.svg" alt="Chat Icon" width="20" height="20" />
+      </div>
+        `;
+    }
     if (imageUrl) {
-      bubble.innerHTML = `
-        ${text ? `<div>${text}</div>` : ''}
+        bubble.innerHTML = `
         <img src="${imageUrl}" alt="Imagen adjunta" style="max-width: 100%; border-radius: 8px; margin-top: 8px;" />
+        ${text ? `<div>${text}</div>` : ''}
       `;
     } else {
       bubble.textContent = text;
     }
     
-    this.messagesContainer.appendChild(bubble);
+    messageContainer.appendChild(bubble);
+    messageContainer.appendChild(dateElement);
+    
+    this.messagesContainer.appendChild(messageContainer);
     this.scrollToBottom();
   }
+
+  addDateSeparator(dateString) {
+    const separator = document.createElement('div');
+    separator.className = 'chat-wg-date-separator';
+    separator.innerHTML = `<span>${this.formatDateSeparator(dateString)}</span>`;
+    this.messagesContainer.appendChild(separator);
+  }
+
+  formatDate(date) {
+    return date.toLocaleDateString('es-ES', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    });
+  }
+
+  formatTime(date) {
+    return date.toLocaleTimeString('es-ES', {
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  }
+
+  getDateOnly(date) {
+    return date.toLocaleDateString('es-ES');
+  }
+
+  formatDateSeparator(dateString) {
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    
+    const todayString = this.getDateOnly(today);
+    const yesterdayString = this.getDateOnly(yesterday);
+    
+    if (dateString === todayString) {
+      return 'Hoy';
+    } else if (dateString === yesterdayString) {
+      return 'Ayer';
+    } else {
+      return dateString;
+    }
+  }
+
 
   handleFileUpload() {
     if (this.fileInput.files.length > 0) {
       const file = this.fileInput.files[0];
-      const reader = new FileReader();
-      
-      reader.onload = (e) => {
-        const caption = this.messageInput.value.trim();
-        this.addMessage(caption, 'right', e.target.result);
-        this.messageInput.value = '';
-        
-        if (this.config.onFileUpload) {
-          this.config.onFileUpload(file);
-        }
-      };
-      
-      reader.readAsDataURL(file);
-      this.fileInput.value = '';
+      this.selectedFile = file;
+      this.showFilePreview(file);
     }
+  }
+
+  showFilePreview(file) {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      this.filePreview.innerHTML = `
+        <img src="${e.target.result}" alt="">
+        <div class="file-wg-preview-info">
+          <div style="color: var(--text-wg-color)">${file.name}</div>
+          <div style="font-size: 0.75rem; color: var(--text-wg-color); opacity: 0.6;">${this.formatFileSize(file.size)}</div>
+        </div>
+        <button class="file-wg-preview-remove" onclick="chatWidget.removeFilePreview()">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M18 6l-12 12" />
+              <path d="M6 6l12 12" />
+          </svg></span>
+        </button>
+      `;
+      this.filePreview.classList.remove('hidden-wg');
+    };
+    
+    reader.readAsDataURL(file);
+  }
+
+  removeFilePreview() {
+    this.selectedFile = null;
+    this.filePreview.classList.add('hidden-wg');
+    this.filePreview.innerHTML = '';
+    this.fileInput.value = '';
+  }
+
+  formatFileSize(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   }
 
   updateStatus(status) {
     if (status === 'typing') {
-      this.typingDots.classList.remove('hidden');
+      this.typingDots.classList.remove('hidden-wg');
     } else {
-      this.typingDots.classList.add('hidden');
+      this.typingDots.classList.add('hidden-wg');
     }
   }
 
@@ -322,52 +938,52 @@ class ChatWidget {
   applyTheme(themeName) {
     const themes = {
       'default': {
-        '--primary-color': '#7b3fe4',
-        '--bg-color': '#ffffff',
-        '--text-color': '#000000',
-        '--text-left-bubble': '#ffffff',
-        '--text-right-bubble': '#000000',
-        '--bg-right-bubble': '#e5e5ea'
+        '--primary-wg-color': '#7b3fe4',
+        '--bg-wg-color': '#ffffff',
+        '--text-wg-color': '#000000',
+        '--text-wg-left-bubble': '#ffffff',
+        '--text-wg-right-bubble': '#000000',
+        '--bg-wg-right-bubble': '#e5e5ea'
       },
       'dark': {
-        '--primary-color': '#2d3748',
-        '--bg-color': '#1a202c',
-        '--text-color': '#e2e8f0',
-        '--text-left-bubble': '#ffffff',
-        '--text-right-bubble': '#ffffff',
-        '--bg-right-bubble': '#4a5568'
+        '--primary-wg-color': '#2d3748',
+        '--bg-wg-color': '#1a202c',
+        '--text-wg-color': '#e2e8f0',
+        '--text-wg-left-bubble': '#ffffff',
+        '--text-wg-right-bubble': '#ffffff',
+        '--bg-wg-right-bubble': '#4a5568'
       },
       'light': {
-        '--primary-color': '#4299e1',
-        '--bg-color': '#ffffff',
-        '--text-color': '#2d3748',
-        '--text-left-bubble': '#ffffff',
-        '--text-right-bubble': '#000000',
-        '--bg-right-bubble': '#edf2f7'
+        '--primary-wg-color': '#4299e1',
+        '--bg-wg-color': '#ffffff',
+        '--text-wg-color': '#2d3748',
+        '--text-wg-left-bubble': '#ffffff',
+        '--text-wg-right-bubble': '#000000',
+        '--bg-wg-right-bubble': '#edf2f7'
       },
       'purple': {
-        '--primary-color': '#6b46c1',
-        '--bg-color': '#faf5ff',
-        '--text-color': '#2d3748',
-        '--text-left-bubble': '#ffffff',
-        '--text-right-bubble': '#000000',
-        '--bg-right-bubble': '#e9d8fd'
+        '--primary-wg-color': '#6b46c1',
+        '--bg-wg-color': '#faf5ff',
+        '--text-wg-color': '#2d3748',
+        '--text-wg-left-bubble': '#ffffff',
+        '--text-wg-right-bubble': '#000000',
+        '--bg-wg-right-bubble': '#e9d8fd'
       },
       'blue': {
-        '--primary-color': '#3182ce',
-        '--bg-color': '#ebf8ff',
-        '--text-color': '#2d3748',
-        '--text-left-bubble': '#ffffff',
-        '--text-right-bubble': '#000000',
-        '--bg-right-bubble': '#bee3f8'
+        '--primary-wg-color': '#3182ce',
+        '--bg-wg-color': '#ebf8ff',
+        '--text-wg-color': '#2d3748',
+        '--text-wg-left-bubble': '#ffffff',
+        '--text-wg-right-bubble': '#000000',
+        '--bg-wg-right-bubble': '#bee3f8'
       },
       'pink':{
-        '--primary-color': '#d8125b',
-        '--bg-color': '#ffffff',
-        '--text-color': '#000000',
-        '--text-left-bubble': '#ffffff',
-        '--text-right-bubble': '#ffffff',
-        '--bg-right-bubble': '#2c2e39'
+        '--primary-wg-color': '#d8125b',
+        '--bg-wg-color': '#ffffff',
+        '--text-wg-color': '#000000',
+        '--text-wg-left-bubble': '#ffffff',
+        '--text-wg-right-bubble': '#ffffff',
+        '--bg-wg-right-bubble': '#2c2e39'
       }
     };
 
@@ -379,37 +995,37 @@ class ChatWidget {
 
   positionElements(position) {
     const chatPositions = {
-      'right-top': { 
+      'top-right': { 
         button: { top: '20px', right: '20px', left: 'auto', bottom: 'auto' },
         window: { top: '20px', right: '20px', left: 'auto', bottom: 'auto' },
         transform: null,
         tooltip: { position: { top:'-5px', right: '60px', bottom:'auto', left:'auto' } }
       },
-      'center-top': { 
+      'top-middle': { 
         button: { top: '20px', left: '50%', right: 'auto', bottom: 'auto' },
         window: { top: '20px', left: '50%', right: 'auto', bottom: 'auto' },
         transform: 'translateX(-50%)',
         tooltip: { position: { top:'-5px', right: 'auto', bottom:'auto', left:'210px' }, transform: 'translateX(-50%)' }
       },
-      'left-top': { 
+      'top-left': { 
         button: { top: '20px', left: '20px', right: 'auto', bottom: 'auto' },
         window: { top: '20px', left: '20px', right: 'auto', bottom: 'auto' },
         transform: null,
         tooltip: { position: { top:'-5px', right: '60px', bottom:'auto', left:'60px' } }
       },
-      'right-bottom': { 
+      'bottom-right': { 
         button: { bottom: '20px', right: '20px', left: 'auto', top: 'auto' },
         window: { bottom: '20px', right: '20px', left: 'auto', top: 'auto' },
         transform: null,
         tooltip: { position: { top:'auto',right: '60px', bottom:'-4px', left:'auto'} }
       },
-      'center-bottom': { 
+      'bottom-middle': { 
         button: { bottom: '20px', left: '50%', right: 'auto', top: 'auto' },
         window: { bottom: '20px', left: '50%', right: 'auto', top: 'auto' },
         transform: 'translateX(-50%)',
         tooltip: { position: { top: 'auto', right: 'auto', bottom: '-4px', left: '1px' }, transform: 'translateX(20%)' }
       },
-      'left-bottom': { 
+      'bottom-left': { 
         button: { bottom: '20px', left: '20px', right: 'auto', top: 'auto' },
         window: { bottom: '20px', left: '20px', right: 'auto', top: 'auto' },
         transform: null,
@@ -417,7 +1033,7 @@ class ChatWidget {
       }
     };
 
-    const config = chatPositions[position] || chatPositions['center-bottom'];
+    const config = chatPositions[position] || chatPositions['bottom-middle'];
     
     // Posicionar botón
     Object.assign(this.chatLauncher.style, config.button);
@@ -444,57 +1060,156 @@ class ChatWidget {
 
   setColors(colors) {
     if (colors.primaryColor) {
-      document.documentElement.style.setProperty('--primary-color', colors.primaryColor);
+      document.documentElement.style.setProperty('--primary-wg-color', colors.primaryColor);
     }
     if (colors.bgColor) {
-      document.documentElement.style.setProperty('--bg-color', colors.bgColor);
+      document.documentElement.style.setProperty('--bg-wg-color', colors.bgColor);
     }
     if (colors.textColor) {
-      document.documentElement.style.setProperty('--text-color', colors.textColor);
+      document.documentElement.style.setProperty('--text-wg-color', colors.textColor);
     }
     if (colors.textLeftBubble) {
-      document.documentElement.style.setProperty('--text-left-bubble', colors.textLeftBubble);
+      document.documentElement.style.setProperty('--text-wg-left-bubble', colors.textLeftBubble);
     }
     if (colors.textRightBubble) {
-      document.documentElement.style.setProperty('--text-right-bubble', colors.textRightBubble);
+      document.documentElement.style.setProperty('--text-wg-right-bubble', colors.textRightBubble);
     }
     if (colors.bgRightBubble) {
-      document.documentElement.style.setProperty('--bg-right-bubble', colors.bgRightBubble);
+      document.documentElement.style.setProperty('--bg-wg-right-bubble', colors.bgRightBubble);
     }
   }
 
   setCompanyInfo({ name, logoUrl }) {
     if (name) {
       this.config.companyName = name;
-      this.chatWrapper.querySelector('.chat-header-title').textContent = name;
+      this.chatWrapper.querySelector('.chat-wg-header-title').textContent = name;
       this.chatTooltip.querySelector('strong').textContent = name;
     }
     if (logoUrl) {
       this.config.logoUrl = logoUrl;
-      this.chatWrapper.querySelector('.chat-header-title img').src = logoUrl;
+      this.chatWrapper.querySelector('.chat-wg-header-title img').src = logoUrl;
     }
   }
 
   setMessages({ welcome, response, tooltip }) {
     if (welcome) {
       this.config.welcomeMessage = welcome;
-      this.messagesContainer.querySelector('.chat-bubble.left').textContent = welcome;
+      this.messagesContainer.querySelector('.chat-wg-bubble.left-wg').textContent = welcome;
     }
     if (response) {
       this.config.responseMessage = response;
     }
     if (tooltip) {
       this.config.tooltipText = tooltip;
-      this.chatTooltip.querySelector('.tooltip-content').innerHTML = `
+      this.chatTooltip.querySelector('.tooltip-wg-content').innerHTML = `
         <strong>${this.config.companyName}</strong><br>
         ${tooltip}
-        <span class="close-tooltip">×</span>
+        <span class="close-wg-tooltip">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M18 6l-12 12" />
+              <path d="M6 6l12 12" />
+            </svg>
+        </span>
       `;
     }
   }
+
+  destroy() {
+  // Limpiar timeouts
+  if (this.tooltipTimeout) {
+    clearTimeout(this.tooltipTimeout);
+  }
+  if (this.typingTimeout) {
+    clearTimeout(this.typingTimeout);
+  }
+
+  // Remover event listeners para evitar memory leaks
+  if (this.chatButton) {
+    this.chatButton.removeEventListener('click', () => this.openChat());
+  }
+  
+  if (this.chatTooltip) {
+    this.chatTooltip.removeEventListener('click', () => this.openChat());
+    const closeTooltipBtn = this.chatTooltip.querySelector('.close-wg-tooltip');
+    if (closeTooltipBtn) {
+      closeTooltipBtn.removeEventListener('click', (e) => {
+        e.stopPropagation();
+        this.closeTooltip();
+      });
+    }
+  }
+
+  if (this.chatWrapper) {
+    const closeBtn = this.chatWrapper.querySelector('#closeChat');
+    if (closeBtn) {
+      closeBtn.removeEventListener('click', () => this.closeChat());
+    }
+
+    const sendBtn = this.chatWrapper.querySelector('#sendMessageBtn');
+    if (sendBtn) {
+      sendBtn.removeEventListener('click', () => this.sendMessage());
+    }
+  }
+
+  if (this.messageInput) {
+    this.messageInput.removeEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        this.sendMessage();
+      }
+    });
+  }
+
+  if (this.fileInput) {
+    this.fileInput.removeEventListener('change', () => this.handleFileUpload());
+  }
+
+  if (this.messagesContainer) {
+    this.messagesContainer.removeEventListener('scroll', () => {
+      const atBottom = this.messagesContainer.scrollTop + this.messagesContainer.clientHeight >= 
+                      this.messagesContainer.scrollHeight - 20;
+      this.scrollBtn.className = atBottom ? 'hidden-wg' : 'scroll-wg-bottom-btn';
+    });
+  }
+
+  if (this.scrollBtn) {
+    this.scrollBtn.removeEventListener('click', () => this.scrollToBottom());
+  }
+
+  // Remover elementos del DOM
+  if (this.chatLauncher && this.chatLauncher.parentNode) {
+    this.chatLauncher.parentNode.removeChild(this.chatLauncher);
+  }
+  
+  if (this.chatWrapper && this.chatWrapper.parentNode) {
+    this.chatWrapper.parentNode.removeChild(this.chatWrapper);
+  }
+
+  // Remover estilos CSS
+  const styleElement = document.getElementById('chat-widget-styles');
+  if (styleElement && styleElement.parentNode) {
+    styleElement.parentNode.removeChild(styleElement);
+  }
+
+  // Limpiar referencias
+  this.chatLauncher = null;
+  this.chatButton = null;
+  this.chatTooltip = null;
+  this.chatWrapper = null;
+  this.messagesContainer = null;
+  this.messageInput = null;
+  this.scrollBtn = null;
+  this.fileInput = null;
+  this.typingDots = null;
+  this.config = null;
+
+  // Opcional: remover la instancia global si existe
+  if (typeof window !== 'undefined' && window.chatWidget === this) {
+    window.chatWidget = null;
+  }
+}
 }
 
-// Exportar para uso en navegador
 if (typeof window !== 'undefined') {
   window.ChatWidget = ChatWidget;
 }
