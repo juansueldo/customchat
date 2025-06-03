@@ -11,6 +11,7 @@ class ChatWidget {
       bgRightBubble: '#e5e5ea',
       companyName: 'Soporte',
       logoUrl: '',
+      bgImage: '',
       welcomeMessage: '¡Hola! ¿En qué podemos ayudarte?',
       responseMessage: 'Gracias por tu mensaje. ¿En qué más podemos ayudarte?',
       onlineText: 'En línea',
@@ -18,7 +19,9 @@ class ChatWidget {
       tooltipDelay: 3000,
       autoResponseDelay: 1000,
       onMessageSent: null,
-      onFileUpload: null
+      onFileUpload: null,
+      axisX: 50,
+      axisY: 50,
     };
 
     // Fusionar opciones con defaults
@@ -43,7 +46,9 @@ class ChatWidget {
         --text-wg-right-bubble: #000;
         --primary-wg-color-rgb: rgb(123, 63, 228); 
       }
-
+      .btn-wg-close:hover{
+        opacity: 0.7;
+      }
       #chat-wg-launcher {
           position: fixed;
           z-index: 9999;
@@ -255,7 +260,8 @@ class ChatWidget {
         display: flex;
         flex-direction: column;
         position: relative;
-        background-image: url('bg-1.png');
+        background: var(--bg-wg-color);
+        background-image: url('${this.config.bgImage}');
         background-size: cover;
         background-repeat: no-repeat;
         background-position: center center;
@@ -597,7 +603,7 @@ class ChatWidget {
             ${imgChatWrapper}
             ${this.config.companyName}
           </div>
-          <button class="btn-close" id="closeChat">
+          <button class="btn-wg-close" id="closeChat">
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M18 6l-12 12" />
               <path d="M6 6l12 12" />
@@ -997,37 +1003,37 @@ class ChatWidget {
     const chatPositions = {
       'top-right': { 
         button: { top: '20px', right: '20px', left: 'auto', bottom: 'auto' },
-        window: { top: '20px', right: '20px', left: 'auto', bottom: 'auto' },
+        window: { top: `${this.config.axisY}px`, right: `${this.config.axisX}px`, left: 'auto', bottom: 'auto' },
         transform: null,
         tooltip: { position: { top:'-5px', right: '60px', bottom:'auto', left:'auto' } }
       },
       'top-middle': { 
         button: { top: '20px', left: '50%', right: 'auto', bottom: 'auto' },
-        window: { top: '20px', left: '50%', right: 'auto', bottom: 'auto' },
+        window: { top: `${this.config.axisY}px`, left: '50%', right: 'auto', bottom: 'auto' },
         transform: 'translateX(-50%)',
         tooltip: { position: { top:'-5px', right: 'auto', bottom:'auto', left:'210px' }, transform: 'translateX(-50%)' }
       },
       'top-left': { 
         button: { top: '20px', left: '20px', right: 'auto', bottom: 'auto' },
-        window: { top: '20px', left: '20px', right: 'auto', bottom: 'auto' },
+        window: { top: `${this.config.axisY}px`, left: `${this.config.axisX}px`, right: 'auto', bottom: 'auto' },
         transform: null,
         tooltip: { position: { top:'-5px', right: '60px', bottom:'auto', left:'60px' } }
       },
       'bottom-right': { 
         button: { bottom: '20px', right: '20px', left: 'auto', top: 'auto' },
-        window: { bottom: '20px', right: '20px', left: 'auto', top: 'auto' },
+        window: { bottom: `${this.config.axisY}px`, right: `${this.config.axisX}px`, left: 'auto', top: 'auto' },
         transform: null,
         tooltip: { position: { top:'auto',right: '60px', bottom:'-4px', left:'auto'} }
       },
       'bottom-middle': { 
         button: { bottom: '20px', left: '50%', right: 'auto', top: 'auto' },
-        window: { bottom: '20px', left: '50%', right: 'auto', top: 'auto' },
+        window: { bottom: `${this.config.axisY}px`, left: '50%', right: 'auto', top: 'auto' },
         transform: 'translateX(-50%)',
         tooltip: { position: { top: 'auto', right: 'auto', bottom: '-4px', left: '1px' }, transform: 'translateX(20%)' }
       },
       'bottom-left': { 
         button: { bottom: '20px', left: '20px', right: 'auto', top: 'auto' },
-        window: { bottom: '20px', left: '20px', right: 'auto', top: 'auto' },
+        window: { bottom: `${this.config.axisY}px`, left: `${this.config.axisX}px`, right: 'auto', top: 'auto' },
         transform: null,
         tooltip: { position: { top:'auto', right: '60px', bottom:'-4px',left: '60px'} }
       }
@@ -1036,8 +1042,8 @@ class ChatWidget {
     const config = chatPositions[position] || chatPositions['bottom-middle'];
     
     // Posicionar botón
-    Object.assign(this.chatLauncher.style, config.button);
-    this.chatLauncher.style.transform = config.transform || '';
+    Object.assign(this.chatLauncher.style, config.window);
+    this.chatLauncher.style.transform = config.window || '';
     
     // Posicionar ventana
     Object.assign(this.chatWrapper.style, config.window);
