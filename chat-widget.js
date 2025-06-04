@@ -11,7 +11,7 @@ class ChatWidget {
       bgRightBubble: '#e5e5ea',
       companyName: 'Soporte',
       logoUrl: '',
-      bgImage: '',
+      bgImage: './bg-1.png',
       welcomeMessage: '¡Hola! ¿En qué podemos ayudarte?',
       responseMessage: 'Gracias por tu mensaje. ¿En qué más podemos ayudarte?',
       onlineText: 'En línea',
@@ -22,17 +22,140 @@ class ChatWidget {
       onFileUpload: null,
       axisX: 50,
       axisY: 50,
+      sendMessageUrl: null,
+      receiveMessagesUrl: null,
+      onChatClosed: null,
+      initialMessages: [], 
+      autoFetchMessages: false, 
+      fetchInterval: null,
+      userImgUrl: './chat.svg',
+      additionalData: [],
+      websocketUrl: null,
+      websocketChannel: null,
+      onWebSocketMessage: null
     };
 
-    // Fusionar opciones con defaults
     this.config = { ...this.defaults, ...options };
     this.lastMessageDate = null;
     this.selectedFile = null;
     this.filePreviewElement = null;
-    // Inicializar
+    this.fetchMessagesInterval = null; 
+   
     this.init();
   }
- _initStyles() {
+
+  initWebSocket() {
+  try {
+    this.websocket = new WebSocket(this.config.websocketUrl);
+    
+    this.websocket.onopen = () => {
+      this.websocket.send(JSON.stringify({
+        type: 'register',
+        destination: this.config.websocketChannel
+      }));
+    };
+
+    this.websocket.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        this.handleWebSocketMessage(data);
+      } catch (error) {
+        console.error('Error parsing WebSocket message:', error);
+      }
+    };
+
+    this.websocket.onclose = (event) => {
+      console.warn('WebSocket desconectado', event.reason || '');
+      setTimeout(() => this.initWebSocket(), 5000); // <-- reconexión segura
+    };
+
+    this.websocket.onerror = (error) => {
+      console.error('WebSocket error:', error);
+    };
+  } catch (error) {
+    console.error('Error inicializando WebSocket:', error);
+  }
+}
+
+  handleWebSocketMessage(data) {
+    switch (data.type) {
+      case 'sendText':
+        this.addMessage(data.msg, 'left-wg', null, new Date(data.time * 1000));
+        this.updateStatus('');
+        break;
+        
+      case 'sendImage':
+        this.addMessage(data.msg, 'left-wg', data.url, new Date(data.time * 1000));
+        this.updateStatus('');
+        break;
+        
+      case 'sendDocument':
+        this.addDocumentMessage(data.url, data.file, new Date(data.time * 1000));
+        this.updateStatus('');
+        break;
+        
+        
+      case 'sendTyping':
+        this.updateStatus('typing');
+        break;
+        
+      default:
+        if (this.config.onWebSocketMessage) {
+          this.config.onWebSocketMessage(data);
+        }
+    }
+  }
+  addDocumentMessage(url, filename, timestamp = null) {
+    const now = timestamp || new Date();
+    const messageDateOnly = this.getDateOnly(now);
+    
+    if (!this.lastMessageDate || this.lastMessageDate !== messageDateOnly) {
+      this.addDateSeparator(messageDateOnly);
+      this.lastMessageDate = messageDateOnly;
+    }
+    
+    const messageContainer = document.createElement('div');
+    messageContainer.className = 'chat-wg-message-container-left-wg';
+    
+    const bubble = document.createElement('div');
+    bubble.className = 'chat-wg-bubble left-wg';
+    
+    const shortFilename = filename.length > 15 ? filename.substring(0, 15) + '...' : filename;
+    
+    bubble.innerHTML = `
+      <div class="document-message" style="display: flex; align-items: center; gap: 10px; padding: 10px; border: 1px solid #ddd; border-radius: 8px; background: #f9f9f9;">
+        <div class="doc-icon" style="background: #dc3545; color: white; padding: 8px; border-radius: 4px; font-size: 12px;">📄</div>
+        <div class="doc-info" style="flex: 1;">
+          <div style="font-weight: bold; font-size: 14px;">${shortFilename}</div>
+          <div style="font-size: 12px; color: #666;">Documento</div>
+        </div>
+        <a href="${url}" target="_blank" style="color: #007bff; text-decoration: none; font-size: 18px;">⬇️</a>
+      </div>
+    `;
+    
+    const dateElement = document.createElement('div');
+    dateElement.className = 'chat-wg-message-date-left-wg';
+    dateElement.textContent = this.formatTime(now);
+    
+    messageContainer.innerHTML = `
+      <div class="bot-wg-logo">
+        <img src="${this.config.userImgUrl}" alt="Chat Icon" width="20" height="20" />
+      </div>
+    `;
+    
+    messageContainer.appendChild(bubble);
+    messageContainer.appendChild(dateElement);
+    
+    this.messagesContainer.appendChild(messageContainer);
+    this.scrollToBottom();
+  }
+  closeWebSocket() {
+    if (this.websocket) {
+      this.websocket.close();
+      this.websocket = null;
+    }
+  }
+  _initStyles() {
     if (!document.getElementById('chat-widget-styles')) {
       const styles = document.createElement('style');
       styles.id = 'chat-widget-styles';
@@ -200,8 +323,6 @@ class ChatWidget {
       .chat-wg-wrapper {
         position: fixed;
         width: 100%;
-        max-width: 360px;
-        height: 500px;
         background: var(--bg-wg-color);
         border-radius: 15px;
         box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
@@ -304,7 +425,7 @@ class ChatWidget {
 
       .chat-wg-footer input[type="file"] { display: none; }
 
-      .chat-wg-footer .btn {
+      .chat-wg-footer .btn-wg {
         color: var(--text-wg-color);
         border: none;
         padding: 5px;
@@ -316,18 +437,20 @@ class ChatWidget {
         background: none; 
       }
 
-      .chat-wg-footer .btn.attach {
+      .chat-wg-footer .btn-wg.attach-wg {
         cursor: pointer;
         outline: none;
         border: none;
         background: none;
         transition: opacity 0.2s ease;
+        height: 26px;
+        width: 26px;
       }
 
       .chat-wg-footer .attach:hover {
         opacity: 0.6;
       }
-      .chat-wg-footer .btn:hover{
+      .chat-wg-footer .btn-wg:hover{
         opacity: 0.6;
       }
 
@@ -359,7 +482,7 @@ class ChatWidget {
       }
       .typing-wg-dots{
         position: absolute;
-        bottom: 65px;
+        bottom: 70px;
         left: 10px;
       }
       .typing-wg-dots span {
@@ -503,6 +626,7 @@ class ChatWidget {
         opacity: 0.9;
         color: var(--text-wg-left-bubble);
       }
+
       @media (max-width: 500px) {
         .chat-wg-wrapper {
           position: fixed !important;
@@ -519,123 +643,24 @@ class ChatWidget {
         }
 
 
-  @supports not (height: 100dvh) {
-    .chat-wg-wrapper {
-      height: 100vh !important;
-      width: 100vw !important;
-      min-height: 100vh !important;
-    }
-  }
-
-  .chat-wg-input-wrapper input[type="text"],
-  .chat-wg-input-wrapper textarea {
-    width: 100%;
-    box-sizing: border-box;
-    padding: 0.5rem;
-    font-size: 1rem;
-    border: 1px solid #ccc;
-    border-radius: 5px;
-  }
-}      @media (max-width: 500px) {
-        .chat-wg-wrapper {
-          position: fixed !important;
-          top: 0 !important;
-          left: 0 !important;
-          width: 100vw !important;
-          height: 100dvh !important;
-          min-height: 100dvh !important;
-          border-radius: 0 !important;
-          transform: none !important;
-          z-index: 9999;
-          display: flex;
-          flex-direction: column;
+        @supports not (height: 100dvh) {
+          .chat-wg-wrapper {
+            height: 100vh !important;
+            width: 100vw !important;
+            min-height: 100vh !important;
+          }
         }
 
-
-  @supports not (height: 100dvh) {
-    .chat-wg-wrapper {
-      height: 100vh !important;
-      width: 100vw !important;
-      min-height: 100vh !important;
-    }
-  }
-
-  .chat-wg-input-wrapper input[type="text"],
-  .chat-wg-input-wrapper textarea {
-    width: 100%;
-    box-sizing: border-box;
-    padding: 0.5rem;
-    font-size: 1rem;
-    border: 1px solid #ccc;
-    border-radius: 5px;
-  }
-}      @media (max-width: 500px) {
-        .chat-wg-wrapper {
-          position: fixed !important;
-          top: 0 !important;
-          left: 0 !important;
-          width: 100vw !important;
-          height: 100dvh !important;
-          min-height: 100dvh !important;
-          border-radius: 0 !important;
-          transform: none !important;
-          z-index: 9999;
-          display: flex;
-          flex-direction: column;
+        .chat-wg-input-wrapper input[type="text"],
+        .chat-wg-input-wrapper textarea {
+          width: 100%;
+          box-sizing: border-box;
+          padding: 0.5rem;
+          font-size: 1rem;
+          border: 1px solid #ccc;
+          border-radius: 5px;
         }
-
-
-  @supports not (height: 100dvh) {
-    .chat-wg-wrapper {
-      height: 100vh !important;
-      width: 100vw !important;
-      min-height: 100vh !important;
-    }
-  }
-
-  .chat-wg-input-wrapper input[type="text"],
-  .chat-wg-input-wrapper textarea {
-    width: 100%;
-    box-sizing: border-box;
-    padding: 0.5rem;
-    font-size: 1rem;
-    border: 1px solid #ccc;
-    border-radius: 5px;
-  }
-}      @media (max-width: 500px) {
-        .chat-wg-wrapper {
-          position: fixed !important;
-          top: 0 !important;
-          left: 0 !important;
-          width: 100vw !important;
-          height: 100dvh !important;
-          min-height: 100dvh !important;
-          border-radius: 0 !important;
-          transform: none !important;
-          z-index: 9999;
-          display: flex;
-          flex-direction: column;
-        }
-
-
-  @supports not (height: 100dvh) {
-    .chat-wg-wrapper {
-      height: 100vh !important;
-      width: 100vw !important;
-      min-height: 100vh !important;
-    }
-  }
-
-  .chat-wg-input-wrapper input[type="text"],
-  .chat-wg-input-wrapper textarea {
-    width: 100%;
-    box-sizing: border-box;
-    padding: 0.5rem;
-    font-size: 1rem;
-    border: 1px solid #ccc;
-    border-radius: 5px;
-  }
-}
+}      
       
       `;
       document.head.appendChild(styles);
@@ -652,6 +677,10 @@ class ChatWidget {
     // Aplicar configuración inicial
     this.applyTheme(this.config.theme);
     this.positionElements(this.config.position);
+    this.renderInitialMessages();
+     if (this.config.websocketUrl && this.config.websocketChannel) {
+      this.initWebSocket();
+    }
     // Configurar eventos
     this.setupEvents();
     // Mostrar tooltip después del delay
@@ -736,7 +765,7 @@ class ChatWidget {
         <div class="chat-wg-bubble left-wg">${this.config.welcomeMessage}</div>
       </div>
 
-      <span id="typingDots" class="typing-wg-dots hidden-wg"><span></span><span></span><span></span></span>
+      <span id="typingDots" class="typing-wg-dots hidden-wg" data-xtz-ifaceid="typingDots"><span></span><span></span><span></span></span>
       <button class="scroll-wg-bottom-btn hidden-wg" id="scrollBtn">
         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M12 5l0 14" />
@@ -747,13 +776,13 @@ class ChatWidget {
       <div id="filePreview" class="file-wg-preview hidden-wg"></div>
 <div class="chat-wg-footer">
   <input type="text" id="messageInput" placeholder="Escribe un mensaje..." />
-  <label class="btn attach" for="fileInput">
+  <label class="btn-wg attach-wg" for="fileInput">
     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
       <path d="M15 7l-6.5 6.5a1.5 1.5 0 0 0 3 3l6.5 -6.5a3 3 0 0 0 -6 -6l-6.5 6.5a4.5 4.5 0 0 0 9 9l6.5 -6.5" />
     </svg>
   </label>
   <input type="file" id="fileInput" accept="image/*" />
-  <button class="btn" id="sendMessageBtn">
+  <button class="btn-wg" id="sendMessageBtn">
     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
       <path d="M10 14l11 -11" />
       <path d="M21 3l-6.5 18a.55 .55 0 0 1 -1 0l-3.5 -7l-7 -3.5a.55 .55 0 0 1 0 -1l18 -6.5" />
@@ -815,17 +844,6 @@ class ChatWidget {
     });
 
     this.scrollBtn.addEventListener('click', () => this.scrollToBottom());
-
-    // Escribiendo...
-    /*this.messageInput.addEventListener('input', () => {
-      if (this.messageInput.value.trim()) {
-        this.updateStatus('typing');
-        clearTimeout(this.typingTimeout);
-        this.typingTimeout = setTimeout(() => this.updateStatus(this.config.onlineText), 2000);
-      } else {
-        this.updateStatus(this.config.onlineText);
-      }
-    });*/
   }
 
   setupTooltip() {
@@ -840,32 +858,103 @@ class ChatWidget {
     this.chatOpened = true;
     this.chatTooltip.classList.add('hidden-wg');
     this.chatWrapper.classList.remove('hidden-wg');
-    // Mostrar el wrapper con transición
+    
     this.chatWrapper.style.display = 'flex';
     setTimeout(() => {
         this.chatWrapper.style.opacity = '1';
         this.chatWrapper.style.visibility = 'visible';
         this.chatWrapper.style.transform = 'translateY(0)';
     }, 10);
+    
     this.chatButton.style.display = 'none';
     this.scrollToBottom();
     clearTimeout(this.tooltipTimeout);
+    
+    this.renderInitialMessages();
+    
+    if (this.config.autoFetchMessages && this.config.receiveMessagesUrl) {
+      this.fetchMessages();
+    }
+    
+    if (this.config.fetchInterval && this.config.receiveMessagesUrl) {
+      this.fetchMessagesInterval = setInterval(() => {
+        this.fetchMessages();
+      }, this.config.fetchInterval);
+    }
   }
 
   closeChat() {
-    // Primero la animación
+
+    if (this.fetchMessagesInterval) {
+      clearInterval(this.fetchMessagesInterval);
+      this.fetchMessagesInterval = null;
+    }
+  
+    if (this.config.onChatClosed) {
+      this.config.onChatClosed();
+    }
+    
     this.chatWrapper.style.opacity = '0';
     this.chatWrapper.style.visibility = 'hidden';
     this.chatWrapper.style.transform = 'translateY(20px)';
     
-    // Luego ocultar completamente
+
     setTimeout(() => {
         this.chatWrapper.style.display = 'none';
         this.chatWrapper.classList.add('hidden-wg');
-    }, 300); // Debe coincidir con la duración de la transición
+    }, 300);
     
     this.chatButton.style.display = 'block';
+    this.chatOpened = false;
   }
+
+  loadMessages(messages) {
+    this.config.initialMessages = messages;
+    this.renderInitialMessages();
+  }
+
+async sendProgrammaticMessage(text, file = null) {
+  if (file) {
+    // Mostrar preview en el chat
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      this.addMessage(text, 'right-wg', e.target.result);
+    };
+    reader.readAsDataURL(file);
+    
+    // Enviar a la API
+    if (this.config.sendMessageUrl) {
+      try {
+        await this.sendToAPI({
+          message: text,
+          file: file,
+          type: 'file'
+        });
+      } catch (error) {
+        console.error('Error enviando archivo programáticamente:', error);
+      }
+    }
+  } else {
+    // Solo texto
+    this.addMessage(text, 'right-wg');
+    
+    if (this.config.sendMessageUrl) {
+      try {
+        await this.sendToAPI({
+          message: text,
+          type: 'text'
+        });
+      } catch (error) {
+        console.error('Error enviando mensaje programáticamente:', error);
+      }
+    }
+  }
+}
+
+// 11. Método público para refrescar mensajes
+async refreshMessages() {
+  await this.fetchMessages();
+}
 
   closeTooltip() {
     this.chatTooltip.classList.add('hidden-wg');
@@ -875,54 +964,193 @@ class ChatWidget {
     this.messagesContainer.scrollTop = this.messagesContainer.scrollHeight;
   }
 
-  sendMessage() {
+  async sendMessage() {
     const text = this.messageInput.value.trim();
     
-    // Si hay archivo seleccionado
     if (this.selectedFile) {
+      console.log('Enviando archivo:', this.selectedFile); // Debug
+      
+      // Guardar referencia del archivo antes de limpiar la interfaz
+      const fileToSend = this.selectedFile;
+      
+      // Mostrar preview en el chat usando FileReader
       const reader = new FileReader();
       reader.onload = (e) => {
-        // Enviar mensaje con imagen y caption (si existe)
         this.addMessage(text, 'right-wg', e.target.result);
-        
-        // Limpiar inputs y preview
-        this.messageInput.value = '';
-        this.removeFilePreview();
-        
-        // Callback si existe
-        if (this.config.onFileUpload) {
-          this.config.onFileUpload(this.selectedFile, text);
+      };
+      reader.readAsDataURL(fileToSend);
+      
+      // Limpiar la interfaz
+      this.messageInput.value = '';
+      this.removeFilePreview(); // Esto limpia this.selectedFile
+      
+      // Enviar a la API con la referencia guardada
+      if (this.config.sendMessageUrl) {
+        try {
+          await this.sendToAPI({
+            message: text,
+            file: fileToSend, // Usar la referencia guardada
+            type: 'file'
+          });
+        } catch (error) {
+          console.error('Error enviando archivo:', error);
         }
-        
-        // Respuesta automática
-        this.updateStatus('typing');
+      }
+      
+      // Callback personalizado si existe
+      if (this.config.onFileUpload) {
+        this.config.onFileUpload(fileToSend, text);
+      }
+      
+      // Respuesta automática solo si no hay API configurada
+      if (!this.config.sendMessageUrl) {
         setTimeout(() => {
           this.updateStatus('');
           this.addMessage(this.config.responseMessage, 'left-wg');
         }, this.config.autoResponseDelay);
-      };
-      reader.readAsDataURL(this.selectedFile);
+      }
     }
-    // Si solo hay texto
+    // Mensaje de solo texto
     else if (text !== '') {
       this.addMessage(text, 'right-wg');
       this.messageInput.value = '';
+      
+      if (this.config.sendMessageUrl) {
+        try {
+          await this.sendToAPI({
+            message: text,
+            type: 'text'
+          });
+        } catch (error) {
+          console.error('Error enviando mensaje:', error);
+        }
+      }
       
       if (this.config.onMessageSent) {
         this.config.onMessageSent(text);
       }
       
-      // Respuesta automática
-      this.updateStatus('typing');
-      setTimeout(() => {
-        this.updateStatus('');
-        this.addMessage(this.config.responseMessage, 'left-wg');
-      }, this.config.autoResponseDelay);
+      // Respuesta automática solo si no hay API configurada
+      if (!this.config.sendMessageUrl) {
+        setTimeout(() => {
+          this.addMessage(this.config.responseMessage, 'left-wg');
+        }, this.config.autoResponseDelay);
+      }
     }
   }
 
-  addMessage(text, direction, imageUrl = null) {
-    const now = new Date();
+  async sendToAPI(messageData) {
+    try {
+      const formData = new FormData();
+      formData.append('message', messageData.message || '');
+      formData.append('type', messageData.type);
+
+      if (this.config.additionalData && typeof this.config.additionalData === 'object') {
+        Object.entries(this.config.additionalData).forEach(([key, value]) => {
+          formData.append(key, value);
+        });
+      }
+
+      if (messageData.file && messageData.file instanceof File) {
+        formData.append('attach', this.encodedFile);
+        formData.append('attach_file', messageData.file.name);
+        formData.append('attach_mime', messageData.file.type);
+        formData.append('size', messageData.file.size);
+      }
+
+      const response = await fetch(this.config.sendMessageUrl, {
+        method: 'POST',
+        body: formData
+      });
+
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      console.log('Respuesta del servidor:', result); // Debug
+
+      // Procesar respuesta del servidor
+      if (result.reply) {
+        this.addMessage(result.reply, 'left-wg');
+      }
+
+      // Procesar múltiples mensajes si vienen en array
+      if (result.messages && Array.isArray(result.messages)) {
+        result.messages.forEach(msg => {
+          this.addMessage(msg.text || msg.message, 'left-wg', msg.imageUrl);
+        });
+      }
+
+      return result;
+
+    } catch (error) {
+      console.error('Error enviando mensaje:', error);
+      this.updateStatus('');
+      this.addMessage('Error al enviar mensaje. Intenta nuevamente.', 'left-wg');
+      throw error;
+    }
+  }
+
+  debugFormData(formData) {
+    console.log('Contenido del FormData:');
+    for (let pair of formData.entries()) {
+      if (pair[1] instanceof File) {
+        console.log(pair[0], 'FILE:', pair[1].name, pair[1].type, pair[1].size);
+      } else {
+        console.log(pair[0], pair[1]);
+      }
+    }
+  }
+
+
+  async fetchMessages() {
+    if (!this.config.receiveMessagesUrl) return;
+    
+    try {
+      const response = await fetch(this.config.receiveMessagesUrl);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const messages = await response.json();
+      
+      // Procesar nuevos mensajes
+      if (Array.isArray(messages)) {
+        messages.forEach(msg => {
+          this.addMessage(msg.text, msg.direction || 'left-wg', msg.imageUrl);
+        });
+      }
+      
+    } catch (error) {
+      console.error('Error obteniendo mensajes:', error);
+    }
+  }
+
+
+  renderInitialMessages() {
+    if (this.config.initialMessages && Array.isArray(this.config.initialMessages)) {
+      this.messagesContainer.innerHTML = '';
+      const welcomeBubble = document.createElement('div');
+      welcomeBubble.className = 'chat-wg-bubble left-wg';
+      welcomeBubble.textContent = this.config.welcomeMessage;
+      this.messagesContainer.appendChild(welcomeBubble);
+      this.config.initialMessages.forEach(msg => {
+        this.addMessage(
+          msg.text, 
+          msg.direction || 'left-wg', 
+          msg.imageUrl,
+          msg.timestamp ? new Date(msg.timestamp) : new Date()
+        );
+      });
+    }
+  }
+
+
+  addMessage(text, direction, imageUrl = null, customTimestamp = null) {
+    const now = customTimestamp || new Date();
     const messageDate = this.formatDate(now);
     const messageDateOnly = this.getDateOnly(now);
     
@@ -940,21 +1168,25 @@ class ChatWidget {
     const dateElement = document.createElement('div');
     dateElement.className = `chat-wg-message-date-${direction}`;
     dateElement.textContent = this.formatTime(now);
+    
     if(direction == 'left-wg'){
       messageContainer.innerHTML = `
       <div class="bot-wg-logo">
-        <img src="chat.svg" alt="Chat Icon" width="20" height="20" />
+        <img src="${this.config.userImgUrl}" alt="Chat Icon" width="20" height="20" />
       </div>
         `;
     }
+    
     if (imageUrl) {
-        bubble.innerHTML = `
-        <img src="${imageUrl}" alt="Imagen adjunta" style="max-width: 100%; border-radius: 8px; margin-top: 8px;" />
+      bubble.innerHTML = `
+        <img src="${imageUrl}" alt="Imagen adjunta"
+            style="max-width: 100%; height: 100px; border-radius: 8px; margin-top: 8px;" />
         ${text ? `<div>${text}</div>` : ''}
       `;
     } else {
-      bubble.textContent = text;
+      bubble.innerHTML = text; 
     }
+
     
     messageContainer.appendChild(bubble);
     messageContainer.appendChild(dateElement);
@@ -971,7 +1203,7 @@ class ChatWidget {
   }
 
   formatDate(date) {
-    return date.toLocaleDateString('es-ES', {
+    return date.toLocaleDateString('en-US', {
       year: 'numeric',
       month: '2-digit',
       day: '2-digit'
@@ -979,14 +1211,15 @@ class ChatWidget {
   }
 
   formatTime(date) {
-    return date.toLocaleTimeString('es-ES', {
+    return date.toLocaleTimeString('en-US', {
       hour: '2-digit',
-      minute: '2-digit'
+      minute: '2-digit',
+      hour12: true
     });
   }
 
   getDateOnly(date) {
-    return date.toLocaleDateString('es-ES');
+    return date.toLocaleDateString('en-US');
   }
 
   formatDateSeparator(dateString) {
@@ -1014,24 +1247,27 @@ class ChatWidget {
       this.showFilePreview(file);
     }
   }
-
   showFilePreview(file) {
     const reader = new FileReader();
     reader.onload = (e) => {
+      this.encodedFile = e.target.result;
       this.filePreview.innerHTML = `
-        <img src="${e.target.result}" alt="">
+        <img src="${this.encodedFile}" alt="">
         <div class="file-wg-preview-info">
           <div style="color: var(--text-wg-color)">${file.name}</div>
           <div style="font-size: 0.75rem; color: var(--text-wg-color); opacity: 0.6;">${this.formatFileSize(file.size)}</div>
         </div>
-        <button class="file-wg-preview-remove" onclick="chatWidget.removeFilePreview()">
+        <button class="file-wg-preview-remove" type="button">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M18 6l-12 12" />
               <path d="M6 6l12 12" />
-          </svg></span>
+          </svg>
         </button>
       `;
       this.filePreview.classList.remove('hidden-wg');
+      
+      const removeBtn = this.filePreview.querySelector('.file-wg-preview-remove');
+      removeBtn.addEventListener('click', () => this.removeFilePreview());
     };
     
     reader.readAsDataURL(file);
@@ -1239,103 +1475,145 @@ class ChatWidget {
       `;
     }
   }
-
-  destroy() {
-  // Limpiar timeouts
-  if (this.tooltipTimeout) {
-    clearTimeout(this.tooltipTimeout);
-  }
-  if (this.typingTimeout) {
-    clearTimeout(this.typingTimeout);
-  }
-
-  // Remover event listeners para evitar memory leaks
-  if (this.chatButton) {
-    this.chatButton.removeEventListener('click', () => this.openChat());
-  }
+  mark(text) {
+    // Escapar caracteres HTML
+    text = text.replace(/[&<>"']/g, function (match) {
+      const escape = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;',
+      };
+      return escape[match];
+    });
   
-  if (this.chatTooltip) {
-    this.chatTooltip.removeEventListener('click', () => this.openChat());
-    const closeTooltipBtn = this.chatTooltip.querySelector('.close-wg-tooltip');
-    if (closeTooltipBtn) {
-      closeTooltipBtn.removeEventListener('click', (e) => {
-        e.stopPropagation();
-        this.closeTooltip();
+    // Reemplazar combinaciones de negritas e itálicas
+    text = text.replace(/\*_([^*]+)_\*/g, '<em><strong>$1</strong></em>');
+    text = text.replace(/_\*([^*]+)_\*/g, '<em><strong>$1</strong></em>');
+  
+    // Reemplazar combinaciones de subrayados y negritas
+    text = text.replace(/\*~([^~]+)~\*/g, '<s><strong>$1</strong></s>');
+    text = text.replace(/~\*([^~]+)~\*/g, '<s><strong>$1</strong></s>');
+  
+    // Reemplazar combinaciones de subrayados e itálicas
+    text = text.replace(/_~([^~]+)~_/g, '<s><em>$1</em></s>');
+    text = text.replace(/~_([^~]+)~_/g, '<s><em>$1</em></s>');
+  
+    // Reemplazar negritas
+    text = text.replace(/\*([^*]+)\*/g, '<strong>$1</strong>');
+  
+    // Reemplazar itálicas
+    text = text.replace(/_([^_]+)_/g, '<em>$1</em>');
+  
+    // Reemplazar tachados
+    text = text.replace(/~([^~]+)~/g, '<s>$1</s>');
+  
+    // Reemplazar formato para monoespaciado: ```
+    text = text.replace(/```([^\`]+)```/g, '<code>$1</code>');
+  
+    // Reemplazar saltos de línea
+    text = text.replace(/\\\s/g, '<br>');
+  
+ 
+  
+    return text;
+  }
+  destroy() {
+    this.closeWebSocket();
+    if (this.fetchMessagesInterval) {
+    clearInterval(this.fetchMessagesInterval);
+    this.fetchMessagesInterval = null;
+  }
+    if (this.tooltipTimeout) {
+      clearTimeout(this.tooltipTimeout);
+    }
+    if (this.typingTimeout) {
+      clearTimeout(this.typingTimeout);
+    }
+
+    if (this.chatButton) {
+      this.chatButton.removeEventListener('click', () => this.openChat());
+    }
+    
+    if (this.chatTooltip) {
+      this.chatTooltip.removeEventListener('click', () => this.openChat());
+      const closeTooltipBtn = this.chatTooltip.querySelector('.close-wg-tooltip');
+      if (closeTooltipBtn) {
+        closeTooltipBtn.removeEventListener('click', (e) => {
+          e.stopPropagation();
+          this.closeTooltip();
+        });
+      }
+    }
+
+    if (this.chatWrapper) {
+      const closeBtn = this.chatWrapper.querySelector('#closeChat');
+      if (closeBtn) {
+        closeBtn.removeEventListener('click', () => this.closeChat());
+      }
+
+      const sendBtn = this.chatWrapper.querySelector('#sendMessageBtn');
+      if (sendBtn) {
+        sendBtn.removeEventListener('click', () => this.sendMessage());
+      }
+    }
+
+    if (this.messageInput) {
+      this.messageInput.removeEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          this.sendMessage();
+        }
       });
     }
-  }
 
-  if (this.chatWrapper) {
-    const closeBtn = this.chatWrapper.querySelector('#closeChat');
-    if (closeBtn) {
-      closeBtn.removeEventListener('click', () => this.closeChat());
+    if (this.fileInput) {
+      this.fileInput.removeEventListener('change', () => this.handleFileUpload());
     }
 
-    const sendBtn = this.chatWrapper.querySelector('#sendMessageBtn');
-    if (sendBtn) {
-      sendBtn.removeEventListener('click', () => this.sendMessage());
+    if (this.messagesContainer) {
+      this.messagesContainer.removeEventListener('scroll', () => {
+        const atBottom = this.messagesContainer.scrollTop + this.messagesContainer.clientHeight >= 
+                        this.messagesContainer.scrollHeight - 20;
+        this.scrollBtn.className = atBottom ? 'hidden-wg' : 'scroll-wg-bottom-btn';
+      });
+    }
+
+    if (this.scrollBtn) {
+      this.scrollBtn.removeEventListener('click', () => this.scrollToBottom());
+    }
+
+    if (this.chatLauncher && this.chatLauncher.parentNode) {
+      this.chatLauncher.parentNode.removeChild(this.chatLauncher);
+    }
+    
+    if (this.chatWrapper && this.chatWrapper.parentNode) {
+      this.chatWrapper.parentNode.removeChild(this.chatWrapper);
+    }
+
+    const styleElement = document.getElementById('chat-widget-styles');
+    if (styleElement && styleElement.parentNode) {
+      styleElement.parentNode.removeChild(styleElement);
+    }
+
+    this.chatLauncher = null;
+    this.chatButton = null;
+    this.chatTooltip = null;
+    this.chatWrapper = null;
+    this.messagesContainer = null;
+    this.messageInput = null;
+    this.scrollBtn = null;
+    this.fileInput = null;
+    this.typingDots = null;
+    this.config = null;
+
+    if (typeof window !== 'undefined' && window.chatWidget === this) {
+      window.chatWidget = null;
     }
   }
-
-  if (this.messageInput) {
-    this.messageInput.removeEventListener('keypress', (e) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        this.sendMessage();
-      }
-    });
-  }
-
-  if (this.fileInput) {
-    this.fileInput.removeEventListener('change', () => this.handleFileUpload());
-  }
-
-  if (this.messagesContainer) {
-    this.messagesContainer.removeEventListener('scroll', () => {
-      const atBottom = this.messagesContainer.scrollTop + this.messagesContainer.clientHeight >= 
-                      this.messagesContainer.scrollHeight - 20;
-      this.scrollBtn.className = atBottom ? 'hidden-wg' : 'scroll-wg-bottom-btn';
-    });
-  }
-
-  if (this.scrollBtn) {
-    this.scrollBtn.removeEventListener('click', () => this.scrollToBottom());
-  }
-
-  // Remover elementos del DOM
-  if (this.chatLauncher && this.chatLauncher.parentNode) {
-    this.chatLauncher.parentNode.removeChild(this.chatLauncher);
-  }
-  
-  if (this.chatWrapper && this.chatWrapper.parentNode) {
-    this.chatWrapper.parentNode.removeChild(this.chatWrapper);
-  }
-
-  // Remover estilos CSS
-  const styleElement = document.getElementById('chat-widget-styles');
-  if (styleElement && styleElement.parentNode) {
-    styleElement.parentNode.removeChild(styleElement);
-  }
-
-  // Limpiar referencias
-  this.chatLauncher = null;
-  this.chatButton = null;
-  this.chatTooltip = null;
-  this.chatWrapper = null;
-  this.messagesContainer = null;
-  this.messageInput = null;
-  this.scrollBtn = null;
-  this.fileInput = null;
-  this.typingDots = null;
-  this.config = null;
-
-  // Opcional: remover la instancia global si existe
-  if (typeof window !== 'undefined' && window.chatWidget === this) {
-    window.chatWidget = null;
-  }
 }
-}
-
 if (typeof window !== 'undefined') {
-  window.ChatWidget = ChatWidget;
+  window.ChatWidget = this;
 }
+
