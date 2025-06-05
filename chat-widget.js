@@ -132,7 +132,7 @@ class ChatWidget {
     
     bubble.innerHTML = `
       <div class="document-message" style="display: flex; align-items: center; gap: 10px; padding: 10px; border-radius: 8px;">
-        <div class="doc-icon" style="background: rgba(40, 37, 27, 0.21); color: white; padding: 8px; border-radius: 4px; font-size: 12px;">📄</div>
+        <div class="doc-icon" style="background: rgba(40, 37, 27, 0.21); color: white; padding: 8px; border-radius: 4px; font-size: 12px;">${this.getFileIcon(mime)}</div>
         <div class="doc-info" style="flex: 1;">
           <div style="font-weight: bold; font-size: 14px;">${shortFilename}</div>
           <div style="font-size: 12px; color: var(${colorText}); opacity: 0.7;">${mime}</div>
@@ -1483,20 +1483,106 @@ async sendMessage() {
 }
 
   getFileIcon(mimeType) {
-    const icons = {
-      'application/pdf': '📄',
-      'application/msword': '📝',
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': '📝',
-      'application/vnd.ms-excel': '📊',
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': '📊',
-      'text/csv': '📊',
-      'text/plain': '📄',
-      'application/vnd.ms-powerpoint': '📈',
-      'application/vnd.openxmlformats-officedocument.presentationml.presentation': '📈'
-    };
-    return icons[mimeType] || '📎';
-  }
-
+  const icons = {
+    // PDF
+    'application/pdf': `
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+        <polyline points="14,2 14,8 20,8"/>
+        <line x1="16" y1="13" x2="8" y2="13"/>
+        <line x1="16" y1="17" x2="8" y2="17"/>
+        <polyline points="10,9 9,9 8,9"/>
+      </svg>`,
+    
+    // Word Documents
+    'application/msword': `
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+        <polyline points="14,2 14,8 20,8"/>
+        <line x1="16" y1="13" x2="8" y2="13"/>
+        <line x1="16" y1="17" x2="8" y2="17"/>
+        <line x1="10" y1="9" x2="8" y2="9"/>
+      </svg>`,
+    
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document': `
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+        <polyline points="14,2 14,8 20,8"/>
+        <line x1="16" y1="13" x2="8" y2="13"/>
+        <line x1="16" y1="17" x2="8" y2="17"/>
+        <line x1="10" y1="9" x2="8" y2="9"/>
+      </svg>`,
+    
+    // Excel/Spreadsheets
+    'application/vnd.ms-excel': `
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+        <polyline points="14,2 14,8 20,8"/>
+        <rect x="8" y="12" width="8" height="2"/>
+        <rect x="8" y="16" width="8" height="2"/>
+        <rect x="8" y="8" width="8" height="2"/>
+      </svg>`,
+    
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': `
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+        <polyline points="14,2 14,8 20,8"/>
+        <rect x="8" y="12" width="8" height="2"/>
+        <rect x="8" y="16" width="8" height="2"/>
+        <rect x="8" y="8" width="8" height="2"/>
+      </svg>`,
+    
+    // CSV
+    'text/csv': `
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+        <polyline points="14,2 14,8 20,8"/>
+        <path d="M8 12h8M8 16h8M8 8h2"/>
+        <circle cx="12" cy="10" r="1"/>
+        <circle cx="16" cy="10" r="1"/>
+        <circle cx="12" cy="14" r="1"/>
+        <circle cx="16" cy="14" r="1"/>
+      </svg>`,
+    
+    // Text Files
+    'text/plain': `
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+        <polyline points="14,2 14,8 20,8"/>
+        <line x1="16" y1="13" x2="8" y2="13"/>
+        <line x1="16" y1="17" x2="8" y2="17"/>
+        <line x1="10" y1="9" x2="8" y2="9"/>
+      </svg>`,
+    
+    // PowerPoint
+    'application/vnd.ms-powerpoint': `
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+        <polyline points="14,2 14,8 20,8"/>
+        <rect x="8" y="10" width="8" height="6" rx="1"/>
+        <circle cx="10" cy="12" r="1"/>
+      </svg>`,
+    
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation': `
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+        <polyline points="14,2 14,8 20,8"/>
+        <rect x="8" y="10" width="8" height="6" rx="1"/>
+        <circle cx="10" cy="12" r="1"/>
+      </svg>`
+  };
+  
+  // Default icon for unknown file types
+  const defaultIcon = `
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+      <polyline points="14,2 14,8 20,8"/>
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+      <polyline points="7,10 12,15 17,10"/>
+    </svg>`;
+  
+  return icons[mimeType] || defaultIcon;
+}
   disableMessageInput() {
     this.messageInput.disabled = true;
     this.messageInput.placeholder = 'No se puede agregar texto con documentos';
