@@ -40,42 +40,43 @@ class ChatWidget {
     this.selectedFile = null;
     this.filePreviewElement = null;
     this.fetchMessagesInterval = null; 
+    this.encodedFile = null;
    
     this.init();
   }
 
   initWebSocket() {
-  try {
-    this.websocket = new WebSocket(this.config.websocketUrl);
-    
-    this.websocket.onopen = () => {
-      this.websocket.send(JSON.stringify({
-        type: 'register',
-        destination: this.config.websocketChannel
-      }));
-    };
+    try {
+      this.websocket = new WebSocket(this.config.websocketUrl);
+      
+      this.websocket.onopen = () => {
+        this.websocket.send(JSON.stringify({
+          type: 'register',
+          destination: this.config.websocketChannel
+        }));
+      };
 
-    this.websocket.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        this.handleWebSocketMessage(data);
-      } catch (error) {
-        console.error('Error parsing WebSocket message:', error);
-      }
-    };
+      this.websocket.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          this.handleWebSocketMessage(data);
+        } catch (error) {
+          console.error('Error parsing WebSocket message:', error);
+        }
+      };
 
-    this.websocket.onclose = (event) => {
-      console.warn('WebSocket desconectado', event.reason || '');
-      setTimeout(() => this.initWebSocket(), 5000); // <-- reconexión segura
-    };
+      this.websocket.onclose = (event) => {
+        console.warn('WebSocket desconectado', event.reason || '');
+        setTimeout(() => this.initWebSocket(), 5000);
+      };
 
-    this.websocket.onerror = (error) => {
-      console.error('WebSocket error:', error);
-    };
-  } catch (error) {
-    console.error('Error inicializando WebSocket:', error);
+      this.websocket.onerror = (error) => {
+        console.error('WebSocket error:', error);
+      };
+    } catch (error) {
+      console.error('Error inicializando WebSocket:', error);
+    }
   }
-}
 
   handleWebSocketMessage(data) {
     switch (data.type) {
@@ -90,10 +91,16 @@ class ChatWidget {
         break;
         
       case 'sendDocument':
-        this.addDocumentMessage(data.url, data.file, new Date(data.time * 1000));
+        this.addDocumentMessage(data.url, data.file, data.mime, new Date(data.time * 1000));
         this.updateStatus('');
         break;
         
+      case 'sendAudio':
+      // Nuevo caso para mensajes de audio
+      this.addAudioMessage(data.url, data.mime, data.time, new Date(data.time * 1000));
+      this.updateStatus('');
+      break;
+      
         
       case 'sendTyping':
         this.updateStatus('typing');
@@ -105,43 +112,63 @@ class ChatWidget {
         }
     }
   }
-  addDocumentMessage(url, filename, timestamp = null) {
+
+  addDocumentMessage(url, filename,mime, timestamp = null,direction='left-wg') {
     const now = timestamp || new Date();
     const messageDateOnly = this.getDateOnly(now);
-    
+    console.log(filename);
     if (!this.lastMessageDate || this.lastMessageDate !== messageDateOnly) {
       this.addDateSeparator(messageDateOnly);
       this.lastMessageDate = messageDateOnly;
     }
     
     const messageContainer = document.createElement('div');
-    messageContainer.className = 'chat-wg-message-container-left-wg';
+    messageContainer.className = `chat-wg-message-container-${direction}`;
     
     const bubble = document.createElement('div');
-    bubble.className = 'chat-wg-bubble left-wg';
-    
+    bubble.className = `chat-wg-bubble ${direction}`;
+    let colorText = direction == 'left-wg' ? '--text-wg-left-bubble' : '--text-wg-right-bubble';
     const shortFilename = filename.length > 15 ? filename.substring(0, 15) + '...' : filename;
     
     bubble.innerHTML = `
-      <div class="document-message" style="display: flex; align-items: center; gap: 10px; padding: 10px; border: 1px solid #ddd; border-radius: 8px; background: #f9f9f9;">
-        <div class="doc-icon" style="background: #dc3545; color: white; padding: 8px; border-radius: 4px; font-size: 12px;">📄</div>
+      <div class="document-message" style="display: flex; align-items: center; gap: 10px; padding: 10px; border-radius: 8px;">
+        <div class="doc-icon" style="background: rgba(40, 37, 27, 0.21); color: white; padding: 8px; border-radius: 4px; font-size: 12px;">📄</div>
         <div class="doc-info" style="flex: 1;">
           <div style="font-weight: bold; font-size: 14px;">${shortFilename}</div>
-          <div style="font-size: 12px; color: #666;">Documento</div>
+          <div style="font-size: 12px; color: var(${colorText}); opacity: 0.7;">${mime}</div>
         </div>
-        <a href="${url}" target="_blank" style="color: #007bff; text-decoration: none; font-size: 18px;">⬇️</a>
+        <a href="${url}" target="_blank" style="color: var(${colorText}); text-decoration: none; font-size: 18px;"> 
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M14 3v4a1 1 0 0 0 1 1h4" />
+            <path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2z" />
+            <path d="M12 17v-6" />
+            <path d="M9.5 14.5l2.5 2.5l2.5 -2.5" />
+          </svg>
+
+        </a>
       </div>
     `;
     
     const dateElement = document.createElement('div');
-    dateElement.className = 'chat-wg-message-date-left-wg';
+    dateElement.className = `chat-wg-message-date-${direction}`;
     dateElement.textContent = this.formatTime(now);
-    
-    messageContainer.innerHTML = `
-      <div class="bot-wg-logo">
-        <img src="${this.config.userImgUrl}" alt="Chat Icon" width="20" height="20" />
-      </div>
-    `;
+    if(direction == 'left-wg'){
+      messageContainer.innerHTML = `
+        <div class="bot-wg-logo">
+          <img src="${this.config.userImgUrl}" alt="Chat Icon" width="20" height="20" />
+        </div>
+      `;
+    }
     
     messageContainer.appendChild(bubble);
     messageContainer.appendChild(dateElement);
@@ -149,6 +176,173 @@ class ChatWidget {
     this.messagesContainer.appendChild(messageContainer);
     this.scrollToBottom();
   }
+  addAudioMessage(url, mime, time, timestamp = null, direction = 'left-wg') {
+  const now = timestamp || new Date();
+  const messageDateOnly = this.getDateOnly(now);
+  
+  if (!this.lastMessageDate || this.lastMessageDate !== messageDateOnly) {
+    this.addDateSeparator(messageDateOnly);
+    this.lastMessageDate = messageDateOnly;
+  }
+  
+  const messageContainer = document.createElement('div');
+  messageContainer.className = `chat-wg-message-container-${direction}`;
+  
+  const bubble = document.createElement('div');
+  bubble.className = `chat-wg-bubble ${direction}`;
+  
+  // Formatear duración del audio si está disponible
+  const formattedDuration = time ? this.formatAudioDuration(time) : 'Audio';
+  
+  bubble.innerHTML = `
+    <div class="audio-message" style="display: flex; align-items: center; gap: 12px; padding: 10px; border-radius: 8px; min-width: 200px;">
+      <div class="audio-icon" style="background: rgba(40, 37, 27, 0.21); color: white; padding: 8px; border-radius: 50%; font-size: 12px; display: flex; align-items: center; justify-content: center; min-width: 32px; height: 32px;">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <polygon points="11 5,6 9,2 9,2 15,6 15,11 19,11 5" />
+          <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+          <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
+        </svg>
+      </div>
+      <div class="audio-info" style="flex: 1;">
+        <div style="font-weight: bold; font-size: 14px; color: var(--text-wg-left-bubble);">Audio</div>
+        <div style="font-size: 12px; color: var(--text-wg-left-bubble); opacity: 0.7;">${formattedDuration}</div>
+      </div>
+      <div class="audio-controls" style="display: flex; gap: 8px; align-items: center;">
+        <button 
+          class="audio-play-btn" 
+          onclick="this.closest('.audio-message').querySelector('audio').play(); this.style.display='none'; this.nextElementSibling.style.display='flex';"
+          style="background: transparent; border: none; color: var(--text-wg-left-bubble); cursor: pointer; padding: 4px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: opacity 0.2s;"
+          onmouseover="this.style.opacity='0.7'"
+          onmouseout="this.style.opacity='1'"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="currentColor"
+            stroke="none"
+          >
+            <polygon points="5,3 19,12 5,21 5,3" />
+          </svg>
+        </button>
+        <button 
+          class="audio-pause-btn" 
+          onclick="this.closest('.audio-message').querySelector('audio').pause(); this.style.display='none'; this.previousElementSibling.style.display='flex';"
+          style="background: transparent; border: none; color: var(--text-wg-left-bubble); cursor: pointer; padding: 4px; border-radius: 50%; display: none; align-items: center; justify-content: center; transition: opacity 0.2s;"
+          onmouseover="this.style.opacity='0.7'"
+          onmouseout="this.style.opacity='1'"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="currentColor"
+            stroke="none"
+          >
+            <rect x="6" y="4" width="4" height="16" />
+            <rect x="14" y="4" width="4" height="16" />
+          </svg>
+        </button>
+        <a 
+          href="${url}" 
+          target="_blank" 
+          download
+          style="color: var(--text-wg-left-bubble); text-decoration: none; font-size: 18px; display: flex; align-items: center; justify-content: center; transition: opacity 0.2s;"
+          onmouseover="this.style.opacity='0.7'"
+          onmouseout="this.style.opacity='1'"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+            <polyline points="7,10 12,15 17,10" />
+            <line x1="12" y1="15" x2="12" y2="3" />
+          </svg>
+        </a>
+      </div>
+      <audio preload="metadata" style="display: none;">
+        <source src="${url}" type="${mime}">
+        Tu navegador no soporta el elemento de audio.
+      </audio>
+    </div>
+  `;
+  
+  const dateElement = document.createElement('div');
+  dateElement.className = `chat-wg-message-date-${direction}`;
+  dateElement.textContent = this.formatTime(now);
+  
+  if (direction === 'left-wg') {
+    messageContainer.innerHTML = `
+      <div class="bot-wg-logo">
+        <img src="${this.config.userImgUrl}" alt="Chat Icon" width="20" height="20" />
+      </div>
+    `;
+  }
+  
+  messageContainer.appendChild(bubble);
+  messageContainer.appendChild(dateElement);
+  
+  this.messagesContainer.appendChild(messageContainer);
+  this.scrollToBottom();
+  
+  // Agregar event listeners para el progreso del audio
+  const audioElement = bubble.querySelector('audio');
+  const playBtn = bubble.querySelector('.audio-play-btn');
+  const pauseBtn = bubble.querySelector('.audio-pause-btn');
+  
+  if (audioElement) {
+    audioElement.addEventListener('ended', () => {
+      playBtn.style.display = 'flex';
+      pauseBtn.style.display = 'none';
+    });
+    
+    audioElement.addEventListener('pause', () => {
+      playBtn.style.display = 'flex';
+      pauseBtn.style.display = 'none';
+    });
+    
+    // Cargar metadatos para obtener la duración real
+    audioElement.addEventListener('loadedmetadata', () => {
+      const duration = audioElement.duration;
+      if (duration && !isNaN(duration)) {
+        const durationElement = bubble.querySelector('.audio-info div:last-child');
+        if (durationElement) {
+          durationElement.textContent = this.formatAudioDuration(duration);
+        }
+      }
+    });
+  }
+}
+
+// Función auxiliar para formatear la duración del audio
+formatAudioDuration(seconds) {
+  if (!seconds || isNaN(seconds)) return 'Audio';
+  
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.floor(seconds % 60);
+  
+  return `${mins}:${secs.toString().padStart(2, '0')}`;
+}
   closeWebSocket() {
     if (this.websocket) {
       this.websocket.close();
@@ -517,6 +711,16 @@ class ChatWidget {
         border: none;
         outline: none;
       }
+      
+      #messageInput:disabled {
+        color: #999 !important;
+        cursor: not-allowed;
+      }
+
+      #messageInput:disabled::placeholder {
+        color: #999 !important;
+        opacity: 1;
+      }
       .chat-wg-message-date-right-wg {
         font-size: 0.75rem;
         margin-top: 4px;
@@ -781,7 +985,7 @@ class ChatWidget {
       <path d="M15 7l-6.5 6.5a1.5 1.5 0 0 0 3 3l6.5 -6.5a3 3 0 0 0 -6 -6l-6.5 6.5a4.5 4.5 0 0 0 9 9l6.5 -6.5" />
     </svg>
   </label>
-  <input type="file" id="fileInput" accept="image/*" />
+  <input type="file" id="fileInput" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.ppt,.pptx" />
   <button class="btn-wg" id="sendMessageBtn">
     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
       <path d="M10 14l11 -11" />
@@ -913,107 +1117,40 @@ class ChatWidget {
     this.renderInitialMessages();
   }
 
-async sendProgrammaticMessage(text, file = null) {
-  if (file) {
-    // Mostrar preview en el chat
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      this.addMessage(text, 'right-wg', e.target.result);
-    };
-    reader.readAsDataURL(file);
-    
-    // Enviar a la API
-    if (this.config.sendMessageUrl) {
-      try {
-        await this.sendToAPI({
-          message: text,
-          file: file,
-          type: 'file'
-        });
-      } catch (error) {
-        console.error('Error enviando archivo programáticamente:', error);
+  async sendProgrammaticMessage(text, file = null) {
+    if (file) {
+      if (this.isImageFile(file)) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          this.addMessage(text, 'right-wg', e.target.result);
+        };
+        reader.readAsDataURL(file);
+      } else if (this.isDocumentFile(file)) {
+        this.addDocumentMessage(
+          URL.createObjectURL(file),
+          file.name,
+          file.type,
+          new Date(),
+          'right-wg'
+        );
       }
-    }
-  } else {
-    // Solo texto
-    this.addMessage(text, 'right-wg');
-    
-    if (this.config.sendMessageUrl) {
-      try {
-        await this.sendToAPI({
-          message: text,
-          type: 'text'
-        });
-      } catch (error) {
-        console.error('Error enviando mensaje programáticamente:', error);
-      }
-    }
-  }
-}
-
-// 11. Método público para refrescar mensajes
-async refreshMessages() {
-  await this.fetchMessages();
-}
-
-  closeTooltip() {
-    this.chatTooltip.classList.add('hidden-wg');
-  }
-
-  scrollToBottom() {
-    this.messagesContainer.scrollTop = this.messagesContainer.scrollHeight;
-  }
-
-  async sendMessage() {
-    const text = this.messageInput.value.trim();
-    
-    if (this.selectedFile) {
-      console.log('Enviando archivo:', this.selectedFile); // Debug
       
-      // Guardar referencia del archivo antes de limpiar la interfaz
-      const fileToSend = this.selectedFile;
+      // AGREGAR ESTA LÍNEA: Habilitar input después de envío programático
+      this.enableMessageInput();
       
-      // Mostrar preview en el chat usando FileReader
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        this.addMessage(text, 'right-wg', e.target.result);
-      };
-      reader.readAsDataURL(fileToSend);
-      
-      // Limpiar la interfaz
-      this.messageInput.value = '';
-      this.removeFilePreview(); // Esto limpia this.selectedFile
-      
-      // Enviar a la API con la referencia guardada
       if (this.config.sendMessageUrl) {
         try {
           await this.sendToAPI({
-            message: text,
-            file: fileToSend, // Usar la referencia guardada
+            message: this.isDocumentFile(file) ? '' : text,
+            file: file,
             type: 'file'
           });
         } catch (error) {
-          console.error('Error enviando archivo:', error);
+          console.error('Error enviando archivo programáticamente:', error);
         }
       }
-      
-      // Callback personalizado si existe
-      if (this.config.onFileUpload) {
-        this.config.onFileUpload(fileToSend, text);
-      }
-      
-      // Respuesta automática solo si no hay API configurada
-      if (!this.config.sendMessageUrl) {
-        setTimeout(() => {
-          this.updateStatus('');
-          this.addMessage(this.config.responseMessage, 'left-wg');
-        }, this.config.autoResponseDelay);
-      }
-    }
-    // Mensaje de solo texto
-    else if (text !== '') {
+    } else {
       this.addMessage(text, 'right-wg');
-      this.messageInput.value = '';
       
       if (this.config.sendMessageUrl) {
         try {
@@ -1022,22 +1159,105 @@ async refreshMessages() {
             type: 'text'
           });
         } catch (error) {
-          console.error('Error enviando mensaje:', error);
+          console.error('Error enviando mensaje programáticamente:', error);
         }
-      }
-      
-      if (this.config.onMessageSent) {
-        this.config.onMessageSent(text);
-      }
-      
-      // Respuesta automática solo si no hay API configurada
-      if (!this.config.sendMessageUrl) {
-        setTimeout(() => {
-          this.addMessage(this.config.responseMessage, 'left-wg');
-        }, this.config.autoResponseDelay);
       }
     }
   }
+
+// 11. Método público para refrescar mensajes
+async sendMessage() {
+  const text = this.messageInput.value.trim();
+  this.filePreview.classList.add('hidden-wg');
+  if (this.selectedFile) {
+    const fileToSend = this.selectedFile;
+    
+    if (this.isImageFile(fileToSend)) {
+      // Es imagen - puede tener texto
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        this.addMessage(text, 'right-wg', e.target.result);
+      };
+      reader.readAsDataURL(fileToSend);
+    } else if (this.isDocumentFile(fileToSend)) {
+      // Es documento - mostrar como documento sin texto
+      this.addDocumentMessage(
+        URL.createObjectURL(fileToSend),
+        fileToSend.name,
+        fileToSend.type,
+        new Date(),
+        'right-wg'
+      );
+    }
+    
+    // Limpiar la interfaz
+    this.messageInput.value = '';
+    
+    
+    // Enviar a la API
+    if (this.config.sendMessageUrl) {
+      try {
+        await this.sendToAPI({
+          message: this.isDocumentFile(fileToSend) ? '' : text,
+          file: fileToSend,
+          type: 'file'
+        });
+      } catch (error) {
+        console.error('Error enviando archivo:', error);
+      }finally{
+        this.removeFilePreview();
+        this.enableMessageInput();
+      }
+    }
+    
+    if (this.config.onFileUpload) {
+      this.config.onFileUpload(fileToSend, this.isDocumentFile(fileToSend) ? '' : text);
+    }
+    
+    if (!this.config.sendMessageUrl) {
+      setTimeout(() => {
+        this.updateStatus('');
+        this.addMessage(this.config.responseMessage, 'left-wg');
+        this.removeFilePreview();
+        this.enableMessageInput();
+      }, this.config.autoResponseDelay);
+    }
+  }
+  // Mensaje de solo texto
+  else if (text !== '') {
+    this.addMessage(text, 'right-wg');
+    this.messageInput.value = '';
+    
+    if (this.config.sendMessageUrl) {
+      try {
+        await this.sendToAPI({
+          message: text,
+          type: 'text'
+        });
+      } catch (error) {
+        console.error('Error enviando mensaje:', error);
+      }
+    }
+    
+    if (this.config.onMessageSent) {
+      this.config.onMessageSent(text);
+    }
+    
+    if (!this.config.sendMessageUrl) {
+      setTimeout(() => {
+        this.addMessage(this.config.responseMessage, 'left-wg');
+      }, this.config.autoResponseDelay);
+    }
+  }
+}
+  closeTooltip() {
+    this.chatTooltip.classList.add('hidden-wg');
+  }
+
+  scrollToBottom() {
+    this.messagesContainer.scrollTop = this.messagesContainer.scrollHeight;
+  }
+
 
   async sendToAPI(messageData) {
     try {
@@ -1050,9 +1270,10 @@ async refreshMessages() {
           formData.append(key, value);
         });
       }
+      console.log(this.encodedFile);
 
       if (messageData.file && messageData.file instanceof File) {
-        formData.append('attach', this.encodedFile);
+        formData.append('attach', this.encodedFile ?? messageData.file);
         formData.append('attach_file', messageData.file.name);
         formData.append('attach_mime', messageData.file.type);
         formData.append('size', messageData.file.size);
@@ -1093,16 +1314,6 @@ async refreshMessages() {
     }
   }
 
-  debugFormData(formData) {
-    console.log('Contenido del FormData:');
-    for (let pair of formData.entries()) {
-      if (pair[1] instanceof File) {
-        console.log(pair[0], 'FILE:', pair[1].name, pair[1].type, pair[1].size);
-      } else {
-        console.log(pair[0], pair[1]);
-      }
-    }
-  }
 
 
   async fetchMessages() {
@@ -1138,12 +1349,22 @@ async refreshMessages() {
       welcomeBubble.textContent = this.config.welcomeMessage;
       this.messagesContainer.appendChild(welcomeBubble);
       this.config.initialMessages.forEach(msg => {
-        this.addMessage(
-          msg.text, 
-          msg.direction || 'left-wg', 
-          msg.imageUrl,
-          msg.timestamp ? new Date(msg.timestamp) : new Date()
-        );
+        switch(msg.type){
+          case 'document':
+            this.addDocumentMessage(msg.url, msg.filename, msg.mime, msg.timestamp ? new Date(msg.timestamp) : new Date(), msg.direction)
+            break;
+          case 'audio':
+            this.addAudioMessage(msg.url, msg.mime, msg.time, msg.timestamp ? new Date(msg.timestamp) : new Date(), msg.direction = 'left-wg')
+            break;
+          default:
+            this.addMessage(
+              msg.text, 
+              msg.direction || 'left-wg', 
+              msg.imageUrl,
+              msg.timestamp ? new Date(msg.timestamp) : new Date()
+            );
+            break;
+        }
       });
     }
   }
@@ -1179,8 +1400,10 @@ async refreshMessages() {
     
     if (imageUrl) {
       bubble.innerHTML = `
-        <img src="${imageUrl}" alt="Imagen adjunta"
-            style="max-width: 100%; height: 100px; border-radius: 8px; margin-top: 8px;" />
+        <a href="${imageUrl}" target="_blank" style="display: inline-block;">
+          <img src="${imageUrl}" alt="Imagen adjunta"
+          style="max-width: 100%; height: 100px; border-radius: 8px; margin-top: 8px;" />
+        </a>
         ${text ? `<div>${text}</div>` : ''}
       `;
     } else {
@@ -1239,20 +1462,81 @@ async refreshMessages() {
     }
   }
 
+  isImageFile(file) {
+    const imageTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'];
+    return imageTypes.includes(file.type);
+  }
+
+  isDocumentFile(file) {
+  const documentTypes = [
+    'application/pdf',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.ms-excel',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'text/csv',
+    'text/plain',
+    'application/vnd.ms-powerpoint',
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation'
+  ];
+  return documentTypes.includes(file.type);
+}
+
+  getFileIcon(mimeType) {
+    const icons = {
+      'application/pdf': '📄',
+      'application/msword': '📝',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': '📝',
+      'application/vnd.ms-excel': '📊',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': '📊',
+      'text/csv': '📊',
+      'text/plain': '📄',
+      'application/vnd.ms-powerpoint': '📈',
+      'application/vnd.openxmlformats-officedocument.presentationml.presentation': '📈'
+    };
+    return icons[mimeType] || '📎';
+  }
+
+  disableMessageInput() {
+    this.messageInput.disabled = true;
+    this.messageInput.placeholder = 'No se puede agregar texto con documentos';
+  }
+
+  enableMessageInput() {
+    this.messageInput.disabled = false;
+    this.messageInput.placeholder = 'Escribe un mensaje...';
+    this.messageInput.style.backgroundColor = 'var(--bg-wg-color)';
+    this.messageInput.style.color = 'var(--text-wg-color)';
+  }
 
   handleFileUpload() {
     if (this.fileInput.files.length > 0) {
       const file = this.fileInput.files[0];
       this.selectedFile = file;
-      this.showFilePreview(file);
+      
+      if (this.isImageFile(file)) {
+        // Es imagen - mostrar preview normal y permitir texto
+        this.showImagePreview(file);
+        this.enableMessageInput();
+      } else if (this.isDocumentFile(file)) {
+        // Es documento - mostrar preview de documento y deshabilitar texto
+        this.showDocumentPreview(file);
+        this.disableMessageInput();
+      } else {
+        // Tipo no soportado
+        alert('Tipo de archivo no soportado. Por favor selecciona una imagen o documento válido.');
+        this.fileInput.value = '';
+        return;
+      }
     }
   }
-  showFilePreview(file) {
+
+  showImagePreview(file) {
     const reader = new FileReader();
     reader.onload = (e) => {
       this.encodedFile = e.target.result;
       this.filePreview.innerHTML = `
-        <img src="${this.encodedFile}" alt="">
+        <img src="${this.encodedFile}" alt="" style="width: 50px; height: 50px; object-fit: cover; border-radius: 6px;">
         <div class="file-wg-preview-info">
           <div style="color: var(--text-wg-color)">${file.name}</div>
           <div style="font-size: 0.75rem; color: var(--text-wg-color); opacity: 0.6;">${this.formatFileSize(file.size)}</div>
@@ -1273,12 +1557,54 @@ async refreshMessages() {
     reader.readAsDataURL(file);
   }
 
+  showDocumentPreview(file) {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      this.encodedFile = e.target.result;
+      console.log(this.encodedFile);
+      const fileIcon = this.getFileIcon(file.type);
+      const shortFilename = file.name.length > 20 ? file.name.substring(0, 20) + '...' : file.name;
+      
+      this.filePreview.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 10px; padding: 10px; border-radius: 8px; background: var(--bg-wg-color); width: 100%;">
+          <div style="background: rgba(57, 56, 51, 0.21); color: white; padding: 8px; border-radius: 4px; font-size: 16px; min-width: 40px; text-align: center;">
+            ${fileIcon}
+          </div>
+          <div style="flex: 1;">
+            <div style="font-weight: bold; font-size: 14px; color: #333;">${shortFilename}</div>
+            <div style="font-size: 0.75rem;color: var(--text-wg-color)">${file.type}</div>
+            <div style="font-size: 0.75rem; color: var(--text-wg-color); opacity: 0.6;">${this.formatFileSize(file.size)}</div>
+          </div>
+          <button class="file-wg-preview-remove" type="button" style="background: var(--primary-wg-color); color: white; border: none; border-radius: 50%; width: 24px; height: 24px; cursor: pointer; display: flex; align-items: center; justify-content: center;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M18 6l-12 12" />
+              <path d="M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      `;
+      this.filePreview.classList.remove('hidden-wg');
+      
+      const removeBtn = this.filePreview.querySelector('.file-wg-preview-remove');
+      removeBtn.addEventListener('click', () => this.removeFilePreview());
+    };
+    
+    reader.readAsDataURL(file);
+  }
+
+
   removeFilePreview() {
-    this.selectedFile = null;
     this.filePreview.classList.add('hidden-wg');
+    this.selectedFile = null;
+    this.encodedFile = null;
     this.filePreview.innerHTML = '';
     this.fileInput.value = '';
+  
+    this.enableMessageInput();
+    this.messageInput.value = '';
   }
+
+  
 
   formatFileSize(bytes) {
     if (bytes === 0) return '0 Bytes';
@@ -1291,12 +1617,15 @@ async refreshMessages() {
   updateStatus(status) {
     if (status === 'typing') {
       this.typingDots.classList.remove('hidden-wg');
+      clearTimeout(this.typingTimeout);
+      this.typingTimeout = setTimeout(() => {
+        this.typingDots.classList.add('hidden-wg');
+      }, 5000);
     } else {
       this.typingDots.classList.add('hidden-wg');
     }
   }
 
-  // Métodos de configuración
   applyTheme(themeName) {
     const themes = {
       'default': {
